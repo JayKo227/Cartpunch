@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CartPunch UI Prototype</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js"></script>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDnOqNF8U-uNKDQEZiR0AyMd6JAbFNEIFE",
+            authDomain: "cartpunch-5b2d8.firebaseapp.com",
+            databaseURL: "https://cartpunch-5b2d8-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "cartpunch-5b2d8",
+            storageBucket: "cartpunch-5b2d8.firebasestorage.app",
+            messagingSenderId: "520710359414",
+            appId: "1:520710359414:web:24f13d22d295deb2a0d257"
+        };
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.database();
+    </script>
+
+    <style>
+        @keyframes scan {
+            0% {
+                top: 10%;
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 1;
+            }
+
+            90% {
+                opacity: 1;
+            }
+
+            100% {
+                top: 90%;
+                opacity: 0;
+            }
+        }
+
+        @keyframes floatUp {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-15px);
+            }
+        }
+
+        .animate-float-up {
+            animation: floatUp 3s ease-in-out infinite;
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+
+<body class="bg-neutral-100 min-h-screen">
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- INLINE SVG ICON SHIMS (Replacing lucide-react dependencies) ---
+        const ScanLine = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 7V5a2 2 0 0 1 2-2h2" /><path d="M17 3h2a2 2 0 0 1 2 2v2" /><path d="M21 17v2a2 2 0 0 1-2 2h-2" /><path d="M7 21H5a2 2 0 0 1-2-2v-2" /><line x1="3" x2="21" y1="12" y2="12" /></svg>
+        );
+        const ShoppingCart = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="8" cy="21" r="1" /><circle cx="19" cy="21" r="1" /><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" /></svg>
+        );
+        const ArrowLeft = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 19-7-7 7-7" /><path d="M19 12H5" /></svg>
+        );
+        const Plus = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" x2="12" y1="5" y2="19" /><line x1="5" x2="19" y1="12" y2="12" /></svg>
+        );
+        const Minus = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="5" x2="19" y1="12" y2="12" /></svg>
+        );
+        const Search = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+        );
+        const AlertCircle = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+        );
+        const CreditCard = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="20" height="14" x="2" y="5" rx="2" /><line x1="2" x2="22" y1="10" y2="10" /></svg>
+        );
+        const Keyboard = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="20" height="12" x="2" y="6" rx="2" /><path d="M6 10h.01" /><path d="M10 10h.01" /><path d="M14 10h.01" /><path d="M18 10h.01" /><path d="M6 14h.01" /><path d="M18 14h.01" /><path d="M10 14h4" /></svg>
+        );
+        const Type = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="4 7 4 4 20 4 20 7" /><line x1="9" x2="15" y1="20" y2="20" /><line x1="12" x2="12" y1="4" y2="20" /></svg>
+        );
+        const Delete = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 5H9l-7 7 7 7h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Z" /><line x1="18" x2="12" y1="9" y2="15" /><line x1="12" x2="18" y1="9" y2="15" /></svg>
+        );
+        const CheckCircle2 = ({ size = 24, className = "", strokeWidth = 2 }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10" /><path d="m9 12 2 2 4-4" /></svg>
+        );
+        const ChevronDown = ({ size = 24, className = "", strokeWidth = 2 }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m6 9 6 6 6-6" /></svg>
+        );
+        const ChevronUp = ({ size = 24, className = "", strokeWidth = 2 }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m18 15-6-6-6 6" /></svg>
+        );
+        const Trash2 = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /><line x1="10" x2="10" y1="11" y2="17" /><line x1="14" x2="14" y1="11" y2="17" /></svg>
+        );
+        const Barcode = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 5v14" /><path d="M21 5v14" /><path d="M7 5v14" /><path d="M11 5v14" /><path d="M14 5v14" /><path d="M17 5v14" /></svg>
+        );
+        const BookOpen = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
+        );
+        const X = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+        );
+        const Pencil = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /><path d="m15 5 4 4" /></svg>
+        );
+
+        // --- FIREBASE LIVE DATABASE INTEGRATION ---
+        // Products will be fetched dynamically via React state.
+        
+        // Helper to format raw numeric string to string with comma thousands separator
+        const formatNumberWithCommas = (str) => {
+            if (!str) return '';
+            const parts = str.split('.');
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            return parts.join('.');
+        };
+
+        const useLocalStorageState = (key, initialValue) => {
+            const [state, setState] = useState(() => {
+                try {
+                    const item = window.localStorage.getItem(key);
+                    return item ? JSON.parse(item) : initialValue;
+                } catch (error) {
+                    console.warn("Error reading localStorage", error);
+                    return initialValue;
+                }
+            });
+            useEffect(() => {
+                try {
+                    window.localStorage.setItem(key, JSON.stringify(state));
+                } catch (error) {
+                    console.warn("Error setting localStorage", error);
+                }
+            }, [key, state]);
+            return [state, setState];
+        };
+
+        function App() {
+            // --- STATE MANAGEMENT ---
+            const [products, setProducts] = useState([]); // Live Firebase products
+            const [screen, setScreen] = useLocalStorageState('cartpunch_monitor_screen', 'splash1');
+            const [budgetMode, setBudgetMode] = useLocalStorageState('cartpunch_monitor_budgetMode', false);
+            const [budget, setBudget] = useLocalStorageState('cartpunch_monitor_budget', 0);
+            const [cart, setCart] = useLocalStorageState('cartpunch_monitor_cart', []);
+            const [scannedItem, setScannedItem] = useState(null);
+            const [itemQty, setItemQty] = useState(1);
+            const [budgetInputStr, setBudgetInputStr] = useState('');
+            const [manualInputType, setManualInputType] = useState('barcode');
+            const [manualInputValue, setManualInputValue] = useState('');
+            const [searchResults, setSearchResults] = useState([]);
+            const [isKeyboardVisible, setIsKeyboardVisible] = useState(true);
+            const [isOnline, setIsOnline] = useState(true);
+
+            const [hasShown70Warning, setHasShown70Warning] = useState(false);
+            const [popupAlert, setPopupAlert] = useState(null); // 'limit' or 'warning70'
+
+            // Navigation history/context for going back
+            const [returnScreen, setReturnScreen] = useState(null);
+            const [scanOrigin, setScanOrigin] = useState('scanning'); // Tracks where to go on Cancel
+            
+            // --- STATE RECOVERY SAFETY NET ---
+            useEffect(() => {
+                // If the user reloads the page, localStorage might restore them to a screen 
+                // that requires transient state (which is reset to null/empty on reload). 
+                // This prevents a blank white screen by safely returning them to the scanning screen.
+                if (screen === 'item_scanned' && !scannedItem) {
+                    setScreen('scanning');
+                }
+                if (screen === 'checkout' && cart.length === 0) {
+                    setScreen('scanning');
+                }
+            }, [screen, scannedItem, cart, setScreen]);
+            
+            // --- FIREBASE SYNC EFFECT ---
+            useEffect(() => {
+                const productsRef = db.ref('products');
+                productsRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    const loadedProducts = [];
+                    if (data) {
+                        Object.keys(data).forEach(key => {
+                            loadedProducts.push({
+                                id: key,
+                                name: data[key].name || 'Unknown',
+                                price: parseFloat(data[key].price) || 0,
+                                stock: data[key].stock || 'High Stock'
+                            });
+                        });
+                    }
+                    setProducts(loadedProducts);
+                });
+                return () => productsRef.off();
+            }, []);
+
+            // Qty Pad State
+            const [isQtyPadVisible, setIsQtyPadVisible] = useState(false);
+            const [qtyInputStr, setQtyInputStr] = useState('1');
+
+            // --- DERIVED STATE ---
+            const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+
+            // --- SPLASH SCREEN TIMERS ---
+            useEffect(() => {
+                if (screen === 'splash1') {
+                    const timer = setTimeout(() => setScreen('tutorial'), 2500);
+                    return () => clearTimeout(timer);
+                }
+            }, [screen]);
+
+            // --- THANK YOU TIMER ---
+            useEffect(() => {
+                if (screen === 'thank_you') {
+                    const timer = setTimeout(() => {
+                        resetApp();
+                    }, 10000); // 10 seconds before auto restart
+                    return () => clearTimeout(timer);
+                }
+            }, [screen]);
+
+            // --- SEARCH EFFECT ---
+            useEffect(() => {
+                if (!manualInputValue) {
+                    setSearchResults([]);
+                    return;
+                }
+                const lowerVal = manualInputValue.toLowerCase();
+                const results = products.filter(item => {
+                    if (manualInputType === 'barcode') return item.id.includes(lowerVal);
+                    return item.name.toLowerCase().includes(lowerVal);
+                });
+                setSearchResults(results);
+            }, [manualInputValue, manualInputType, products]);
+
+            // --- DYNAMIC THEME ENGINE ---
+            const defaultTheme = {
+                bg: 'bg-[#FFF9F5]',
+                primary: 'bg-orange-500',
+                primaryHover: 'hover:bg-orange-600',
+                textTitle: 'text-orange-950',
+                textValue: 'text-orange-600',
+                iconBg: 'bg-orange-100',
+                iconColor: 'text-orange-600',
+                border: 'border-orange-100',
+                borderHighlight: 'border-orange-200',
+                shadow: 'shadow-orange-200',
+                softBg: 'bg-orange-50',
+                laserBg: 'bg-orange-500',
+                laserShadow: 'shadow-[0_0_20px_#f97316]',
+                hoverBorder: 'hover:border-orange-500',
+                hoverText: 'group-hover:text-orange-500'
+            };
+
+            const getThemeColors = () => {
+                const pct = (budgetMode && budget > 0) ? (cartTotal / budget) : 0;
+
+                if (pct >= 1) { // LIMIT REACHED: RED
+                    return {
+                        bg: 'bg-red-50',
+                        primary: 'bg-red-500',
+                        primaryHover: 'hover:bg-red-600',
+                        textTitle: 'text-red-950',
+                        textValue: 'text-red-600',
+                        iconBg: 'bg-red-100',
+                        iconColor: 'text-red-600',
+                        border: 'border-red-100',
+                        borderHighlight: 'border-red-200',
+                        shadow: 'shadow-red-200',
+                        softBg: 'bg-red-50',
+                        laserBg: 'bg-red-500',
+                        laserShadow: 'shadow-[0_0_20px_#ef4444]',
+                        hoverBorder: 'hover:border-red-500',
+                        hoverText: 'group-hover:text-red-500'
+                    };
+                } else if (pct >= 0.7) { // 70% REACHED: YELLOW
+                    return {
+                        bg: 'bg-yellow-50',
+                        primary: 'bg-yellow-500',
+                        primaryHover: 'hover:bg-yellow-600',
+                        textTitle: 'text-yellow-900',
+                        textValue: 'text-yellow-600',
+                        iconBg: 'bg-yellow-100',
+                        iconColor: 'text-yellow-600',
+                        border: 'border-yellow-100',
+                        borderHighlight: 'border-yellow-200',
+                        shadow: 'shadow-yellow-200',
+                        softBg: 'bg-yellow-50',
+                        laserBg: 'bg-yellow-400',
+                        laserShadow: 'shadow-[0_0_20px_#facc15]',
+                        hoverBorder: 'hover:border-yellow-500',
+                        hoverText: 'group-hover:text-yellow-500'
+                    };
+                } else { // DEFAULT: NEUTRAL ORANGE
+                    return defaultTheme;
+                }
+            };
+            const theme = getThemeColors();
+
+            // --- ACTIONS ---
+            const handleSimulateScan = () => {
+                if (products.length === 0) return;
+                const randomItem = products[Math.floor(Math.random() * products.length)];
+                setScannedItem(randomItem);
+                setItemQty(1);
+                setScanOrigin('scanning');
+                setScreen('item_scanned');
+            };
+
+            const handleManualSearch = (e) => {
+                if (e) e.preventDefault();
+                setIsKeyboardVisible(false);
+            };
+
+            const selectItemFromSearch = (item) => {
+                setScannedItem(item);
+                setItemQty(1);
+                setScanOrigin('manual_input');
+                setScreen('item_scanned');
+            };
+
+            const handleAddToCart = () => {
+                const newItemTotal = scannedItem.price * itemQty;
+                const newCartTotal = cartTotal + newItemTotal;
+
+                if (budgetMode && newCartTotal > budget) {
+                    setPopupAlert('limit');
+                } else {
+                    addToCartState(scannedItem, itemQty);
+
+                    if (budgetMode && newCartTotal >= budget * 0.7 && !hasShown70Warning) {
+                        setHasShown70Warning(true);
+                        setPopupAlert('warning70');
+                        setScreen('scanning');
+                    } else {
+                        setScreen('scanning');
+                    }
+                }
+            };
+
+            const addToCartState = (item, qty) => {
+                const existing = cart.find(i => i.id === item.id);
+                if (existing) {
+                    setCart(cart.map(i => i.id === item.id ? { ...i, qty: i.qty + qty } : i));
+                } else {
+                    setCart([...cart, { ...item, qty }]);
+                }
+            };
+
+            const handleRemoveFromCart = (itemId) => {
+                const newCart = cart.filter(item => item.id !== itemId);
+                setCart(newCart);
+
+                const newTotal = newCart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+                if (budgetMode && budget > 0 && newTotal < budget * 0.7) {
+                    setHasShown70Warning(false);
+                }
+            };
+
+            const resetApp = () => {
+                setCart([]);
+                setBudgetMode(false);
+                setBudget(0);
+                setBudgetInputStr('');
+                setScannedItem(null);
+                setItemQty(1);
+                setIsKeyboardVisible(true);
+                setHasShown70Warning(false);
+                setPopupAlert(null);
+                setIsQtyPadVisible(false);
+                setScreen('splash1');
+            };
+
+            // --- KEYBOARD ACTIONS ---
+            const handleKeyPress = (key) => {
+                if (key === 'DEL') {
+                    setManualInputValue(prev => prev.slice(0, -1));
+                } else if (key === 'SPACE') {
+                    setManualInputValue(prev => prev + ' ');
+                } else if (key === 'ENTER') {
+                    handleManualSearch();
+                } else {
+                    setManualInputValue(prev => prev + key);
+                }
+            };
+
+            // --- SCREEN RENDERS ---
+
+            // Screen 1: Splash 1
+            const renderSplash1 = () => (
+                <div className="flex flex-col items-center justify-center h-full bg-[#FFF9F5] text-gray-800 animate-pulse">
+                    <div className="w-28 h-28 bg-orange-500 rounded-[35px] flex items-center justify-center mb-6 shadow-xl shadow-orange-200">
+                        <ScanLine size={56} className="text-white" />
+                    </div>
+                    <h1 className="text-4xl font-bold tracking-wider text-orange-950">CartPunch</h1>
+                    <p className="text-orange-600/80 mt-2 tracking-widest text-sm uppercase font-bold">System</p>
+                </div>
+            );
+
+            // Screen 2: Tutorial Manual
+            const renderTutorial = () => (
+                <div className="flex flex-col h-full bg-orange-50 overflow-hidden relative">
+                    <div className="absolute top-32 -left-12 text-orange-500/5 rotate-[-15deg] pointer-events-none">
+                        <ShoppingCart size={220} />
+                    </div>
+                    <div className="absolute bottom-40 -right-16 text-orange-500/5 rotate-[15deg] pointer-events-none">
+                        <Barcode size={280} />
+                    </div>
+                    <div className="absolute top-1/4 right-8 text-orange-500/10 font-black text-8xl pointer-events-none">1</div>
+                    <div className="absolute top-1/2 left-6 text-orange-500/10 font-black text-9xl pointer-events-none">2</div>
+                    <div className="absolute bottom-1/3 right-10 text-orange-500/10 font-black text-8xl pointer-events-none">3</div>
+
+                    <div className="bg-orange-500 pt-10 pb-6 px-8 rounded-b-[2.5rem] shadow-md relative z-10 shrink-0">
+                        <div className="flex items-center justify-center space-x-3">
+                            <BookOpen className="text-white" size={32} />
+                            <h2 className="text-2xl font-bold text-white tracking-wide text-center">How to Use CartPunch</h2>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 flex flex-col justify-center px-6 pt-4 pb-6 z-10 relative">
+                        <div className="space-y-3 mb-auto mt-2">
+                            {[
+                                "Set your limit budget.",
+                                "Scan the item barcode to the Barcode Scanner Module.",
+                                "If scanning doesn't work, input the item barcode number or the name of the item.",
+                                "Add your selected items to the cart. You can easily adjust quantities or remove items as needed.",
+                                "Review your final cart summary and complete your checkout. Happy shopping!"
+                            ].map((step, i) => (
+                                <div key={i} className="flex items-start space-x-4 bg-white/90 backdrop-blur-sm p-3.5 rounded-2xl shadow-sm border border-orange-100">
+                                    <div className="bg-orange-100 text-orange-600 font-black w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-inner">
+                                        {i + 1}
+                                    </div>
+                                    <p className="text-[13px] font-bold text-gray-700 leading-snug pt-1">
+                                        {step}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="mt-4 bg-white/90 backdrop-blur-sm p-4 rounded-2xl border border-blue-100 shadow-sm shrink-0">
+                            <p className="text-blue-800 font-bold text-[11px] text-center italic leading-relaxed uppercase tracking-wider">
+                                Offline? No problem! Your cart automatically saves your items so your shopping trip stays on track!
+                            </p>
+                        </div>
+
+                        <button
+                            onClick={() => setScreen('budget_prompt')}
+                            className="w-full mt-4 py-5 bg-orange-500 text-white rounded-[1.5rem] font-bold text-xl shadow-lg shadow-orange-200 hover:bg-orange-600 transition-colors shrink-0"
+                        >
+                            Understood
+                        </button>
+                    </div>
+                </div>
+            );
+
+            // Screen 3: Budget Prompt
+            const renderBudgetPrompt = () => (
+                <div className="flex flex-col h-full bg-[#FFF9F5] items-center justify-center px-8 transition-colors">
+                    <div className="w-24 h-24 bg-white shadow-sm border border-orange-100 rounded-full flex items-center justify-center mb-8">
+                        <ShoppingCart size={48} className="text-orange-500" />
+                    </div>
+                    <h2 className="text-3xl font-bold text-center mb-3 text-gray-800">Set a Budget?</h2>
+                    <p className="text-gray-500 text-center mb-12 text-lg">Would you like to set a maximum budget for your shopping today to track your spending?</p>
+
+                    <div className="w-full space-y-4 max-w-sm">
+                        <button
+                            onClick={() => { setBudgetMode(true); setBudgetInputStr(budget > 0 ? budget.toString() : ''); setScreen('budget_input'); }}
+                            className="w-full py-5 bg-orange-500 text-white rounded-2xl font-bold text-xl shadow-lg shadow-orange-200 hover:bg-orange-600 transition-colors"
+                        >
+                            Yes, set a budget
+                        </button>
+                        <button
+                            onClick={() => { setBudgetMode(false); setScreen('scanning'); }}
+                            className="w-full py-5 bg-white text-gray-600 border-2 border-gray-200 rounded-2xl font-bold text-xl hover:bg-gray-50 transition-colors"
+                        >
+                            No, skip for now
+                        </button>
+                    </div>
+                </div>
+            );
+
+            // Screen 4 & 11: Budget Input
+            const renderBudgetInput = () => {
+                const budgetNumericKeys = [
+                    ['1', '2', '3'],
+                    ['4', '5', '6'],
+                    ['7', '8', '9'],
+                    ['', '0', 'DEL']
+                ];
+
+                const handleBudgetKey = (key) => {
+                    if (key === 'DEL') {
+                        setBudgetInputStr(prev => prev.slice(0, -1));
+                    } else if (key !== '') {
+                        if (budgetInputStr.replace('.', '').length >= 9) return;
+                        setBudgetInputStr(prev => prev + key);
+                    }
+                };
+
+                return (
+                    <div className={`flex flex-col h-full ${defaultTheme.bg}`}>
+                        <div className="p-6 pt-8 shrink-0">
+                            <button onClick={() => screen === 'budget_input' && !returnScreen ? setScreen('budget_prompt') : setScreen(returnScreen || 'scanning')} className="p-3 bg-white rounded-full shadow-sm text-gray-600 border border-orange-50 w-fit">
+                                <ArrowLeft size={28} />
+                            </button>
+                        </div>
+                        <div className="px-8 flex-1 flex flex-col justify-center pb-8 max-w-lg mx-auto w-full min-h-0">
+                            <h2 className="text-4xl font-bold mb-3 text-gray-800">Max Budget</h2>
+                            <p className="text-gray-500 mb-8 text-lg">Enter the maximum amount you want to spend today.</p>
+
+                            <div className="relative mb-8 shrink-0 flex items-center overflow-hidden rounded-[2rem] bg-white border-2 border-orange-100 focus-within:border-orange-500 shadow-sm transition-all px-6">
+                                <span className="pr-2 text-3xl font-bold text-orange-300">₱</span>
+                                <div className="flex flex-1 items-center overflow-hidden whitespace-nowrap">
+                                    <span className={`text-5xl font-bold py-6 outline-none cursor-default text-gray-800 ${!budgetInputStr ? 'text-gray-300' : ''}`}>
+                                        {budgetInputStr ? formatNumberWithCommas(budgetInputStr) : '0'}
+                                    </span>
+                                    <div className={`w-0.5 h-10 ${defaultTheme.primary} animate-pulse ml-1 transition-colors shrink-0`}></div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col space-y-3 max-w-[320px] mx-auto mb-10 w-full shrink-0">
+                                {budgetNumericKeys.map((row, rowIndex) => (
+                                    <div key={rowIndex} className="flex justify-center space-x-3 w-full">
+                                        {row.map((key, kIndex) => (
+                                            key === '' ? (
+                                                <div key={`blank-${kIndex}`} className="flex-1"></div>
+                                            ) : (
+                                                <button
+                                                    key={key}
+                                                    onClick={() => handleBudgetKey(key)}
+                                                    className={`h-16 flex-1 rounded-2xl shadow-[0_2px_0_rgba(0,0,0,0.05)] active:scale-95 active:translate-y-1 transition-all flex items-center justify-center text-2xl font-bold border border-gray-100
+                                ${key === 'DEL' ? 'bg-gray-100 text-gray-700 text-xl' : 'bg-white text-gray-800 hover:bg-orange-50'}`}
+                                                >
+                                                    {key === 'DEL' ? <Delete size={24} /> : key}
+                                                </button>
+                                            )
+                                        ))}
+                                    </div>
+                                ))}
+                            </div>
+
+                            <button
+                                onClick={() => {
+                                    const num = parseFloat(budgetInputStr);
+                                    if (num > 0) {
+                                        setBudget(num);
+                                        setHasShown70Warning(false);
+                                        setScreen(returnScreen || 'scanning');
+                                        setReturnScreen(null);
+                                    }
+                                }}
+                                className={`w-full py-5 rounded-2xl font-bold text-xl transition-all shrink-0 ${parseFloat(budgetInputStr) > 0 ? 'bg-orange-500 text-white shadow-lg shadow-orange-200 hover:bg-orange-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                            >
+                                Confirm Budget
+                            </button>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Header component used in scanning screens
+            const TopHeader = () => (
+                <div className={`bg-white text-gray-800 pt-8 pb-5 px-8 flex justify-between items-center rounded-b-[2rem] shadow-sm border-b ${theme.border} z-10 relative transition-colors`}>
+                    <div className="flex items-center space-x-3 shrink-0">
+                        <div className={`w-10 h-10 ${theme.iconBg} rounded-xl flex items-center justify-center transition-colors`}>
+                            <ScanLine size={24} className={theme.iconColor} />
+                        </div>
+                        <h1 className={`text-2xl font-black tracking-wide ${theme.textTitle} transition-colors`}>CartPunch</h1>
+                    </div>
+                    {budgetMode && (
+                        <div className="text-right flex flex-col items-end min-w-0 flex-1 ml-4">
+                            <div className="flex items-center justify-end w-full mb-0.5 space-x-1.5">
+                                <p className="text-sm font-semibold text-gray-400 uppercase tracking-wider shrink-0">Budget</p>
+                                <button
+                                    onClick={() => {
+                                        setReturnScreen(screen);
+                                        setBudgetInputStr(budget.toString());
+                                        setScreen('budget_input');
+                                    }}
+                                    title="Edit Budget"
+                                    className={`p-1 rounded-md bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors`}
+                                >
+                                    <Pencil size={12} />
+                                </button>
+                            </div>
+                            <p className={`${theme.textValue} font-black text-xl transition-colors truncate w-full text-right`}>₱{formatNumberWithCommas(budget.toFixed(2))}</p>
+                        </div>
+                    )}
+                </div>
+            );
+
+            // Screen 5 & 7: Scanning Idle
+            const renderScanning = () => (
+                <div className={`flex flex-col h-full ${theme.bg} relative transition-colors duration-500`}>
+                    <TopHeader />
+
+                    <div className="flex-1 flex flex-col items-center justify-center p-8">
+                        <div
+                            onClick={handleSimulateScan}
+                            className={`w-full max-w-[340px] aspect-square rounded-[3rem] border-4 border-dashed ${theme.borderHighlight} flex flex-col items-center justify-center bg-white shadow-sm relative overflow-hidden cursor-pointer ${theme.hoverBorder} transition-colors group animate-float-up`}
+                        >
+                            <div className={`absolute top-0 left-0 w-full h-1.5 ${theme.laserBg} opacity-75 ${theme.laserShadow} animate-[scan_2s_ease-in-out_infinite] transition-colors`}></div>
+                            <Barcode size={100} className={`text-gray-300 ${theme.hoverText} transition-colors mb-6 animate-pulse`} />
+                            <p className="text-gray-600 font-bold text-2xl text-center px-4 leading-tight">Waiting for the item to be Scan</p>
+                        </div>
+
+                        <button
+                            onClick={() => {
+                                setScreen('manual_input');
+                                setIsKeyboardVisible(true);
+                                setManualInputValue('');
+                            }}
+                            className={`mt-12 flex items-center space-x-3 bg-white border border-gray-200 text-gray-700 px-8 py-4 rounded-full font-bold text-lg hover:${theme.softBg} ${theme.hoverText} hover:${theme.borderHighlight} shadow-sm transition-all`}
+                        >
+                            <Keyboard size={24} />
+                            <span>Manual Input</span>
+                        </button>
+                    </div>
+
+                    <div className={`bg-white p-8 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)] flex justify-between space-x-4 border-t ${theme.border} relative z-10 transition-colors`}>
+                        <button
+                            onClick={() => setScreen('cart')}
+                            className={`flex-1 py-5 ${theme.softBg} ${theme.textValue} rounded-2xl font-bold text-lg flex items-center justify-center space-x-2 ${theme.hoverBorder} transition-colors border ${theme.borderHighlight}`}
+                        >
+                            <ShoppingCart size={24} />
+                            <span>View Cart ({cart.length})</span>
+                        </button>
+                        <button
+                            onClick={() => cart.length > 0 && setScreen('checkout')}
+                            className={`flex-1 py-5 ${theme.primary} text-white rounded-2xl font-bold text-xl shadow-lg ${theme.shadow} ${theme.primaryHover} transition-colors ${cart.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                            Finish Up
+                        </button>
+                    </div>
+                </div>
+            );
+
+            // Screen 13: Manual Input with Custom Keyboard
+            const renderManualInput = () => {
+                const numericKeys = [
+                    ['1', '2', '3'],
+                    ['4', '5', '6'],
+                    ['7', '8', '9'],
+                    ['DEL', '0', 'ENTER']
+                ];
+                const qwertyRows = [
+                    ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+                    ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+                    ['Z', 'X', 'C', 'V', 'B', 'N', 'M', 'DEL'],
+                    ['SPACE', 'ENTER']
+                ];
+
+                return (
+                    <div className={`flex flex-col h-full ${defaultTheme.bg} transition-colors`}>
+                        <div className={`bg-white pt-8 pb-5 px-6 flex items-center shadow-sm border-b ${defaultTheme.border} z-10 relative shrink-0 transition-colors`}>
+                            <button onClick={() => setScreen('scanning')} className="p-3 bg-gray-50 rounded-full text-gray-600 mr-4">
+                                <ArrowLeft size={24} />
+                            </button>
+                            <h2 className="text-2xl font-bold text-gray-800">Manual Search</h2>
+                        </div>
+
+                        <div className="flex-1 flex flex-col pt-6 min-h-0 relative">
+                            <div className="px-6 mb-6 shrink-0">
+                                <div className="flex bg-gray-100/80 p-1.5 rounded-[1rem] border border-gray-200">
+                                    <button
+                                        onClick={() => { setManualInputType('barcode'); setManualInputValue(''); }}
+                                        className={`flex-1 py-3.5 text-base font-bold rounded-xl flex items-center justify-center space-x-2 transition-all ${manualInputType === 'barcode' ? `bg-white shadow-sm ${defaultTheme.textValue} border ${defaultTheme.borderHighlight}` : 'text-gray-500'}`}
+                                    >
+                                        <ScanLine size={18} />
+                                        <span>Barcode No.</span>
+                                    </button>
+                                    <button
+                                        onClick={() => { setManualInputType('name'); setManualInputValue(''); }}
+                                        className={`flex-1 py-3.5 text-base font-bold rounded-xl flex items-center justify-center space-x-2 transition-all ${manualInputType === 'name' ? `bg-white shadow-sm ${defaultTheme.textValue} border ${defaultTheme.borderHighlight}` : 'text-gray-500'}`}
+                                    >
+                                        <Type size={18} />
+                                        <span>Product Name</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="px-6 flex-1 flex flex-col min-h-0">
+                                <label className={`block ${defaultTheme.textValue} text-sm font-bold uppercase tracking-wider mb-2 shrink-0 transition-colors`}>
+                                    {manualInputType === 'barcode' ? 'Enter Barcode Numbers' : 'Enter Product Name'}
+                                </label>
+                                <div
+                                    onClick={() => setIsKeyboardVisible(true)}
+                                    className="relative shrink-0 mb-4 flex items-center overflow-hidden rounded-2xl bg-white border-2 border-orange-200 focus-within:border-orange-500 shadow-inner transition-colors px-5 cursor-text"
+                                >
+                                    <div className="flex flex-1 items-center overflow-hidden whitespace-nowrap py-5">
+                                        <span className={`text-3xl font-bold text-gray-800 ${!manualInputValue ? 'text-gray-400' : ''}`}>
+                                            {manualInputValue || (manualInputType === 'barcode' ? 'e.g. 48060...' : 'e.g. Salsa')}
+                                        </span>
+                                        <div className={`w-0.5 h-10 ${defaultTheme.primary} animate-pulse ml-1 transition-colors shrink-0`}></div>
+                                    </div>
+                                </div>
+
+                                <div className={`overflow-y-auto bg-white rounded-2xl ${defaultTheme.borderHighlight} shadow-sm transition-all duration-300 ease-in-out flex flex-col ${searchResults.length > 0 ? 'border opacity-100 mb-4' : 'border-none opacity-0 h-0 overflow-hidden'} ${isKeyboardVisible ? 'max-h-[288px]' : 'flex-1 mb-8'}`}>
+                                    {searchResults.length > 0 && searchResults.map((item, index) => (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => selectItemFromSearch(item)}
+                                            className={`w-full text-left p-4 border-b ${defaultTheme.softBg} hover:${defaultTheme.softBg} transition-colors flex justify-between items-center last:border-0 shrink-0`}
+                                        >
+                                            <div className="flex-1 pr-4 min-w-0">
+                                                <p className="font-bold text-gray-800 text-sm truncate">{item.name}</p>
+                                                <p className="text-xs text-gray-500 font-mono mt-0.5 truncate">{item.id}</p>
+                                            </div>
+                                            <div className={`${defaultTheme.iconBg} border ${defaultTheme.borderHighlight} px-3 py-1.5 rounded-xl shadow-sm shrink-0 ml-2 transition-colors max-w-[140px] flex items-center justify-center overflow-hidden`}>
+                                                <p className={`font-black ${defaultTheme.textValue} text-lg transition-colors truncate w-full text-center`}>₱{formatNumberWithCommas(item.price.toFixed(2))}</p>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="mt-auto shrink-0 flex flex-col relative z-20">
+                                <div className="flex justify-end px-6 relative mb-[-1px] z-30">
+                                    <button
+                                        onClick={() => setIsKeyboardVisible(!isKeyboardVisible)}
+                                        className="bg-gray-300 text-gray-700 px-6 py-2 rounded-t-2xl flex items-center justify-center hover:bg-gray-400 transition-colors shadow-[0_-2px_4px_rgba(0,0,0,0.05)]"
+                                    >
+                                        {isKeyboardVisible ? <ChevronDown size={24} /> : <ChevronUp size={24} />}
+                                    </button>
+                                </div>
+
+                                <div className={`bg-gray-200/60 border-t border-gray-300 transition-all duration-300 ease-in-out origin-bottom overflow-hidden ${isKeyboardVisible ? 'max-h-[350px] pb-8 pt-4 px-2 opacity-100' : 'max-h-0 pb-0 pt-0 px-2 opacity-0 border-transparent'}`}>
+                                    {manualInputType === 'barcode' ? (
+                                        <div className="flex flex-col space-y-2 max-w-[320px] mx-auto">
+                                            {numericKeys.map((row, rowIndex) => (
+                                                <div key={rowIndex} className="flex justify-center space-x-2">
+                                                    {row.map(key => (
+                                                        <button
+                                                            key={key}
+                                                            onClick={() => handleKeyPress(key)}
+                                                            className={`h-16 flex-1 rounded-xl shadow-[0_2px_0_rgba(0,0,0,0.1)] active:scale-95 active:translate-y-1 transition-all flex items-center justify-center text-2xl font-bold
+                                    ${key === 'ENTER' ? `${defaultTheme.primary} text-white shadow-md` :
+                                                                    key === 'DEL' ? 'bg-gray-300 text-gray-700 text-xl' :
+                                                                        'bg-white text-gray-800'}`}
+                                                        >
+                                                            {key === 'DEL' ? <Delete size={24} /> : key === 'ENTER' ? 'Go' : key}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col space-y-2">
+                                            {qwertyRows.map((row, rowIndex) => (
+                                                <div key={rowIndex} className="flex justify-center space-x-1.5 w-full">
+                                                    {row.map(key => (
+                                                        <button
+                                                            key={key}
+                                                            onClick={() => handleKeyPress(key)}
+                                                            style={key === 'SPACE' ? { flex: 3 } : key === 'ENTER' ? { flex: 1.5 } : { flex: 1 }}
+                                                            className={`h-14 rounded-lg shadow-[0_2px_0_rgba(0,0,0,0.1)] active:scale-95 active:translate-y-1 transition-all flex items-center justify-center text-xl font-bold px-1
+                                    ${key === 'ENTER' ? `${defaultTheme.primary} text-white shadow-md` :
+                                                                    key === 'DEL' ? 'bg-gray-300 text-gray-700' :
+                                                                        'bg-white text-gray-800'}`}
+                                                        >
+                                                            {key === 'DEL' ? <Delete size={20} /> : key === 'ENTER' ? 'Search' : key === 'SPACE' ? 'Space' : key}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Screen 6: Item Scanned
+            const renderItemScanned = () => {
+                if (!scannedItem) return null;
+
+                const getStockColor = (status) => {
+                    if (status === 'High Stock') return 'bg-green-500 text-white border-green-600 shadow-sm';
+                    if (status === 'Moderate Stock') return 'bg-yellow-400 text-yellow-900 border-yellow-500 shadow-sm';
+                    return 'bg-red-500 text-white border-red-600 shadow-sm';
+                };
+
+                return (
+                    <div className={`flex flex-col h-full ${theme.bg} relative transition-colors`}>
+                        <TopHeader />
+
+                        <div className="flex-1 p-8 flex flex-col justify-center pb-12">
+                            <div className={`bg-white p-8 rounded-[2.5rem] shadow-xl ${theme.shadow} border ${theme.softBg} flex flex-col items-center transition-colors relative`}>
+
+                                <button
+                                    onClick={() => setScreen(scanOrigin)}
+                                    className="absolute top-5 right-5 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                                >
+                                    <X size={28} />
+                                </button>
+
+                                <div className={`px-5 py-2 rounded-full text-sm font-bold border mb-8 ${getStockColor(scannedItem.stock)}`}>
+                                    {scannedItem.stock}
+                                </div>
+
+                                <h2 className="text-3xl font-bold text-center mb-4 text-gray-800 leading-tight">{scannedItem.name}</h2>
+                                <div className={`${theme.iconBg} border ${theme.borderHighlight} px-6 py-3 rounded-2xl shadow-sm mb-10 transition-colors w-full max-w-[85%] mx-auto overflow-hidden text-center`}>
+                                    <p className={`text-5xl font-black ${theme.textValue} transition-colors truncate w-full`}>₱{formatNumberWithCommas(scannedItem.price.toFixed(2))}</p>
+                                </div>
+
+                                <div className="flex items-center justify-between w-full max-w-[240px] bg-gray-50 rounded-[1.5rem] p-2 mb-10 border border-gray-100">
+                                    <button
+                                        onClick={() => setItemQty(Math.max(1, itemQty - 1))}
+                                        className="w-14 h-14 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center text-gray-600 active:scale-95 transition-transform"
+                                    >
+                                        <Minus size={24} />
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setQtyInputStr(itemQty.toString());
+                                            setIsQtyPadVisible(true);
+                                        }}
+                                        className="text-3xl font-bold w-20 h-14 flex items-center justify-center text-gray-800 bg-white rounded-2xl shadow-sm border border-orange-200 hover:bg-orange-50 active:scale-95 transition-all"
+                                    >
+                                        {itemQty}
+                                    </button>
+                                    <button
+                                        onClick={() => setItemQty(itemQty + 1)}
+                                        className="w-14 h-14 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center text-gray-600 active:scale-95 transition-transform"
+                                    >
+                                        <Plus size={24} />
+                                    </button>
+                                </div>
+
+                                <div className="w-full flex justify-between items-center mb-8 px-4 text-gray-500 font-bold text-lg border-t border-dashed border-gray-200 pt-6 space-x-4">
+                                    <span className="shrink-0">Subtotal:</span>
+                                    <span className={`text-2xl ${theme.textValue} font-black ${theme.softBg} border ${theme.borderHighlight} px-4 py-1.5 rounded-xl transition-colors truncate max-w-[200px] text-right`}>₱{formatNumberWithCommas((scannedItem.price * itemQty).toFixed(2))}</span>
+                                </div>
+
+                                <button
+                                    onClick={handleAddToCart}
+                                    className={`w-full py-5 ${theme.primary} text-white rounded-2xl font-bold text-xl shadow-lg ${theme.shadow} ${theme.primaryHover} active:scale-95 transition-all`}
+                                >
+                                    Add to Cart
+                                </button>
+                                <button
+                                    onClick={() => setScreen(scanOrigin)}
+                                    className="w-full py-4 bg-gray-50 text-gray-500 border border-gray-100 rounded-2xl font-bold text-lg hover:bg-gray-100 transition-colors mt-3"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Screen 8 & 9: View Cart
+            const renderCart = () => (
+                <div className={`flex flex-col h-full ${theme.bg} transition-colors`}>
+                    <div className={`bg-white pt-8 pb-5 px-8 shadow-sm border-b ${theme.border} z-10 relative flex flex-col transition-colors`}>
+                        <div className="flex items-center mb-5 shrink-0">
+                            <button onClick={() => setScreen('scanning')} className="p-3 bg-gray-50 rounded-full text-gray-600 mr-4">
+                                <ArrowLeft size={24} />
+                            </button>
+                            <h2 className="text-2xl font-bold text-gray-800">Your Cart</h2>
+                        </div>
+
+                        {budgetMode && (
+                            <div className={`${theme.softBg} border ${theme.borderHighlight} p-5 rounded-2xl flex justify-between items-center mt-2 transition-colors space-x-4 shrink-0`}>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center space-x-2 mb-1">
+                                        <p className={`text-xs ${theme.textValue} font-bold uppercase tracking-wider transition-colors`}>Set Budget</p>
+                                        <button
+                                            onClick={() => {
+                                                setReturnScreen('cart');
+                                                setBudgetInputStr(budget.toString());
+                                                setScreen('budget_input');
+                                            }}
+                                            className={`p-1 rounded-md ${theme.iconBg} ${theme.iconColor} hover:opacity-80 transition-opacity`}
+                                            title="Edit Budget"
+                                        >
+                                            <Pencil size={12} />
+                                        </button>
+                                    </div>
+                                    <p className="text-2xl font-black text-gray-800 truncate w-full">₱{formatNumberWithCommas(budget.toFixed(2))}</p>
+                                </div>
+                                <div className="text-right flex-1 min-w-0">
+                                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Remaining</p>
+                                    <p className={`text-xl font-black truncate w-full text-right ${budget - cartTotal < 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                        ₱{formatNumberWithCommas((budget - cartTotal).toFixed(2))}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-6 space-y-4 text-gray-800">
+                        {cart.length === 0 ? (
+                            <div className={`h-full flex flex-col items-center justify-center ${theme.textValue} opacity-60 transition-colors`}>
+                                <ShoppingCart size={64} className="mb-6" />
+                                <p className="text-xl font-bold">Your cart is empty</p>
+                            </div>
+                        ) : (
+                            cart.map((item) => (
+                                <div key={item.id} className={`bg-white p-5 rounded-2xl shadow-sm border ${theme.softBg} flex justify-between items-center transition-colors`}>
+                                    <div className="flex-1 pr-3 overflow-hidden">
+                                        <h3 className="font-bold text-gray-800 text-lg leading-tight mb-2 truncate">{item.name}</h3>
+                                        <p className="text-sm font-semibold text-gray-500 bg-gray-50 inline-block px-3 py-1 rounded-lg">₱{formatNumberWithCommas(item.price.toFixed(2))} <span className="text-gray-400 mx-1">x</span> {item.qty}</p>
+                                    </div>
+                                    <div className="flex items-center space-x-2 shrink-0 min-w-0 ml-2 max-w-[50%] justify-end">
+                                        <div className={`${theme.iconBg} border ${theme.borderHighlight} px-3 py-2 rounded-xl shadow-sm transition-colors min-w-0 flex-1 overflow-hidden`}>
+                                            <p className={`font-black text-xl ${theme.textValue} transition-colors truncate w-full text-center`}>₱{formatNumberWithCommas((item.price * item.qty).toFixed(2))}</p>
+                                        </div>
+                                        <button
+                                            onClick={() => handleRemoveFromCart(item.id)}
+                                            className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 active:bg-red-100 rounded-xl transition-colors shrink-0"
+                                        >
+                                            <Trash2 size={24} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    <div className={`bg-white p-8 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)] border-t ${theme.border} z-10 relative transition-colors`}>
+                        <div className="flex justify-between items-end mb-6 space-x-4 w-full">
+                            <span className="text-gray-500 font-bold text-lg shrink-0">Total ({cart.reduce((s, i) => s + i.qty, 0)} items)</span>
+                            <span className="text-4xl font-black text-gray-800 truncate text-right flex-1 min-w-0">₱{formatNumberWithCommas(cartTotal.toFixed(2))}</span>
+                        </div>
+                        <button
+                            onClick={() => cart.length > 0 && setScreen('checkout')}
+                            className={`w-full py-5 rounded-2xl font-bold text-xl transition-all shadow-lg ${cart.length > 0 ? `${theme.primary} text-white ${theme.primaryHover} ${theme.shadow}` : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                        >
+                            Lock & Finish
+                        </button>
+                    </div>
+                </div>
+            );
+
+            // Popups
+            const renderWarning70Popup = () => (
+                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+                    <div className="bg-white p-8 rounded-[2.5rem] w-full max-w-sm flex flex-col items-center text-center shadow-2xl border-4 border-yellow-400">
+                        <div className="w-20 h-20 bg-yellow-100 rounded-[1.5rem] flex items-center justify-center mb-6 border border-yellow-200 shadow-sm">
+                            <AlertCircle size={48} className="text-yellow-600" />
+                        </div>
+                        <h2 className="text-3xl font-black mb-3 text-gray-800">Budget Warning!</h2>
+                        <p className="text-gray-500 text-lg mb-8 leading-relaxed">You have reached <span className="font-bold text-yellow-600">70%</span> of your set budget. Spend wisely!</p>
+                        <button
+                            onClick={() => setPopupAlert(null)}
+                            className="w-full py-5 bg-yellow-500 text-white rounded-2xl font-bold text-xl shadow-lg shadow-yellow-200 hover:bg-yellow-600 active:scale-95 transition-all"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            );
+
+            const renderBudgetAlertPopup = () => (
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+                    <div className="bg-white p-6 rounded-[2.5rem] w-full max-w-sm flex flex-col items-center text-center shadow-2xl border-4 border-red-500">
+                        <div className="w-20 h-20 bg-red-100 rounded-[1.5rem] flex items-center justify-center mb-4 border border-red-200 shadow-sm">
+                            <AlertCircle size={48} className="text-red-500" />
+                        </div>
+                        <h2 className="text-2xl font-black mb-2 text-gray-800">Budget Limit Reached!</h2>
+                        <p className="text-gray-500 text-sm mb-6 w-full text-center">Adding this item exceeds your budget of <br /><span className="font-bold text-red-600 truncate block w-full max-w-[250px] mx-auto mt-1">₱{formatNumberWithCommas(budget.toFixed(2))}</span></p>
+
+                        <div className="bg-red-50 border border-red-100 p-4 rounded-2xl w-full mb-6">
+                            <div className="flex justify-between mb-2 text-sm font-medium text-gray-600 space-x-4">
+                                <span className="shrink-0">Current Total:</span>
+                                <span className="font-bold text-gray-800 truncate text-right flex-1">₱{formatNumberWithCommas(cartTotal.toFixed(2))}</span>
+                            </div>
+                            <div className="flex justify-between mb-2 text-sm font-medium text-gray-600 space-x-4">
+                                <span className="shrink-0">Item to Add:</span>
+                                <span className="font-bold text-gray-800 truncate text-right flex-1">₱{formatNumberWithCommas((scannedItem?.price * itemQty).toFixed(2))}</span>
+                            </div>
+                            <div className="h-px bg-red-200 my-2"></div>
+                            <div className="flex justify-between text-lg font-black text-red-600 space-x-4">
+                                <span className="shrink-0">New Total:</span>
+                                <span className="truncate text-right flex-1">₱{formatNumberWithCommas((cartTotal + (scannedItem?.price * itemQty)).toFixed(2))}</span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3 w-full">
+                            <button
+                                onClick={() => {
+                                    setPopupAlert(null);
+                                    setReturnScreen('item_scanned');
+                                    setBudgetInputStr(budget.toString());
+                                    setScreen('budget_input');
+                                }}
+                                className="w-full py-4 bg-orange-100 text-orange-700 border border-orange-200 rounded-2xl font-bold text-base hover:bg-orange-200 transition-colors"
+                            >
+                                Increase Budget Limit
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setPopupAlert(null);
+                                    setScreen('cart');
+                                }}
+                                className="w-full py-4 bg-gray-100 text-gray-700 border border-gray-200 rounded-2xl font-bold text-base hover:bg-gray-200 transition-colors"
+                            >
+                                Go to Cart to Adjust
+                            </button>
+                            <button
+                                onClick={() => {
+                                    addToCartState(scannedItem, itemQty);
+                                    setPopupAlert(null);
+                                    setScreen('checkout');
+                                }}
+                                className="w-full py-4 bg-red-500 text-white rounded-2xl font-bold text-base shadow-lg shadow-red-200 hover:bg-red-600 transition-colors"
+                            >
+                                Add Anyway & Finish Up
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setPopupAlert(null);
+                                    setScreen(scanOrigin);
+                                }}
+                                className="w-full py-3 bg-transparent text-gray-500 rounded-2xl font-bold text-sm hover:bg-gray-50 transition-colors"
+                            >
+                                Cancel Item
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const renderQtyPadPopup = () => {
+                const numKeys = [
+                    ['1', '2', '3'],
+                    ['4', '5', '6'],
+                    ['7', '8', '9'],
+                    ['DEL', '0', 'OK']
+                ];
+
+                const handleKey = (key) => {
+                    if (key === 'DEL') {
+                        setQtyInputStr(prev => prev.length > 1 ? prev.slice(0, -1) : '0');
+                    } else if (key === 'OK') {
+                        const num = parseInt(qtyInputStr || '0', 10);
+                        setItemQty(Math.max(1, num));
+                        setIsQtyPadVisible(false);
+                    } else {
+                        setQtyInputStr(prev => {
+                            if (prev === '0') return key;
+                            if (prev.length >= 3) return prev;
+                            return prev + key;
+                        });
+                    }
+                };
+
+                const adjustStr = (delta) => {
+                    const num = parseInt(qtyInputStr || '0', 10);
+                    const next = Math.max(1, num + delta);
+                    setQtyInputStr(next.toString());
+                };
+
+                return (
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+                        <div className={`bg-white p-6 rounded-[2.5rem] w-full max-w-sm flex flex-col shadow-2xl border-4 ${theme.borderHighlight}`}>
+                            <h3 className="text-center font-bold text-gray-400 mb-6 uppercase tracking-wider text-sm">Set Quantity</h3>
+
+                            <div className="flex items-center justify-center space-x-6 mb-8">
+                                <button onClick={() => adjustStr(-1)} className={`p-4 ${theme.softBg} ${theme.textValue} rounded-2xl active:scale-95 transition-transform`}><ChevronDown size={32} strokeWidth={3} /></button>
+                                <div className="text-6xl font-black w-24 text-center text-gray-800">{qtyInputStr || '0'}</div>
+                                <button onClick={() => adjustStr(1)} className={`p-4 ${theme.softBg} ${theme.textValue} rounded-2xl active:scale-95 transition-transform`}><ChevronUp size={32} strokeWidth={3} /></button>
+                            </div>
+
+                            <div className="flex flex-col space-y-3">
+                                {numKeys.map((row, i) => (
+                                    <div key={i} className="flex space-x-3">
+                                        {row.map(key => (
+                                            <button
+                                                key={key}
+                                                onClick={() => handleKey(key)}
+                                                className={`h-16 flex-1 rounded-2xl font-bold text-2xl shadow-[0_2px_0_rgba(0,0,0,0.05)] active:translate-y-1 active:shadow-none transition-all flex items-center justify-center border border-gray-100
+                                ${key === 'DEL' ? 'bg-gray-100 text-gray-600' : key === 'OK' ? `${theme.primary} text-white shadow-[0_4px_0_rgba(0,0,0,0.15)]` : 'bg-white text-gray-800 hover:bg-orange-50'}`}
+                                            >
+                                                {key === 'DEL' ? <Delete size={24} /> : key === 'OK' ? <CheckCircle2 size={28} /> : key}
+                                            </button>
+                                        ))}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Screen 12: Checkout
+            const renderCheckout = () => (
+                <div className={`flex flex-col h-full ${defaultTheme.bg} transition-colors`}>
+                    <div className={`${defaultTheme.primary} pt-10 pb-8 px-8 shadow-md z-10 relative text-white rounded-b-[2.5rem] transition-colors shrink-0 flex flex-col`}>
+                        <div className="flex items-center mb-8 shrink-0">
+                            <button onClick={() => setScreen('cart')} className="p-3 bg-white/20 hover:bg-white/30 rounded-full text-white mr-4 transition-colors">
+                                <ArrowLeft size={24} />
+                            </button>
+                            <h2 className="text-2xl font-bold">Finish Up</h2>
+                        </div>
+                        <p className="text-white/80 text-sm font-bold uppercase tracking-wider mb-2 shrink-0">Total Bill to Pay</p>
+                        <div className="w-full overflow-hidden">
+                            <h1 className="text-6xl font-black tracking-tight truncate w-full">₱{formatNumberWithCommas(cartTotal.toFixed(2))}</h1>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-8">
+                        <h3 className="font-bold text-gray-700 mb-4 flex items-center text-lg uppercase tracking-wider shrink-0">
+                            <ScanLine size={20} className={`mr-3 ${defaultTheme.textValue} transition-colors`} /> Scanned Items
+                        </h3>
+
+                        <div className={`bg-white rounded-[2rem] shadow-sm border ${defaultTheme.borderHighlight} overflow-hidden mb-6 transition-colors`}>
+                            {cart.map((item, index) => (
+                                <div key={index} className="p-5 border-b border-gray-100 flex justify-between items-center last:border-0">
+                                    <div className="flex-1 pr-4 min-w-0">
+                                        <h4 className="font-bold text-gray-800 text-base mb-1 truncate">{item.name}</h4>
+                                        <p className="text-sm font-medium text-gray-500">Qty: {item.qty} | ₱{formatNumberWithCommas(item.price.toFixed(2))}</p>
+                                    </div>
+                                    <div className={`${defaultTheme.softBg} border ${defaultTheme.borderHighlight} px-3 py-1.5 rounded-lg shadow-sm shrink-0 ml-2 transition-colors min-w-0 max-w-[120px] flex items-center justify-center overflow-hidden`}>
+                                        <p className={`font-black ${defaultTheme.textValue} text-lg transition-colors truncate w-full text-center`}>₱{formatNumberWithCommas((item.price * item.qty).toFixed(2))}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className={`bg-white p-8 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)] border-t ${defaultTheme.border} z-10 relative transition-colors`}>
+                        <button
+                            onClick={() => setScreen('thank_you')}
+                            className={`w-full py-6 ${defaultTheme.primary} text-white rounded-[1.5rem] font-bold text-xl shadow-xl ${defaultTheme.shadow} ${defaultTheme.primaryHover} transition-colors flex items-center justify-center space-x-3`}
+                        >
+                            <CheckCircle2 size={28} />
+                            <span>Confirm & Exit</span>
+                        </button>
+                    </div>
+                </div>
+            );
+
+            // Screen 16: Thank You
+            const renderThankYou = () => (
+                <div className={`flex flex-col h-full ${defaultTheme.bg} items-center justify-center px-8 text-center transition-colors`}>
+                    <div className={`w-32 h-32 bg-white shadow-xl ${defaultTheme.shadow} border ${defaultTheme.borderHighlight} rounded-full flex items-center justify-center mb-10 transition-colors`}>
+                        <CheckCircle2 size={64} className={defaultTheme.textValue} />
+                    </div>
+                    <h2 className={`text-4xl font-black mb-4 ${defaultTheme.textTitle} transition-colors`}>Thank You!</h2>
+                    <p className="text-gray-500 text-lg mb-12 px-4 leading-relaxed">Your shopping session is successfully completed. Have a great day!</p>
+
+                    <div className="w-full flex items-center justify-center space-x-3 text-gray-400 mt-8">
+                        <div className="w-2 h-2 rounded-full bg-orange-300 animate-bounce"></div>
+                        <p className="text-sm font-bold uppercase tracking-widest">Restarting Shortly</p>
+                        <div className="w-2 h-2 rounded-full bg-orange-300 animate-bounce" style={{ animationDelay: '200ms' }}></div>
+                    </div>
+                </div>
+            );
+
+            // --- MAIN RENDER ROUTER ---
+            return (
+                <div className="min-h-screen bg-neutral-200 py-10 flex items-center justify-center font-sans p-4">
+                    <div className="w-full max-w-[530px] h-[769px] bg-white rounded-[2.5rem] shadow-2xl shadow-neutral-400 border-[16px] border-[#1c1c1e] relative overflow-hidden flex flex-col select-none">
+
+                        {/* Network Status Toggle */}
+                        {screen !== 'splash1' && screen !== 'tutorial' && (
+                            <button
+                                onClick={() => setIsOnline(!isOnline)}
+                                className={`absolute top-5 right-6 z-50 flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm transition-all border backdrop-blur-md ${isOnline
+                                    ? 'bg-white/90 text-green-600 border-green-200 hover:bg-white'
+                                    : 'bg-white/90 text-gray-500 border-gray-200 hover:bg-white'
+                                    }`}
+                            >
+                                <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+                                <span>{isOnline ? 'Online' : 'Offline'}</span>
+                            </button>
+                        )}
+
+                        {screen === 'splash1' && renderSplash1()}
+                        {screen === 'tutorial' && renderTutorial()}
+                        {screen === 'budget_prompt' && renderBudgetPrompt()}
+                        {screen === 'budget_input' && renderBudgetInput()}
+                        {screen === 'scanning' && renderScanning()}
+                        {screen === 'manual_input' && renderManualInput()}
+                        {screen === 'item_scanned' && renderItemScanned()}
+                        {screen === 'cart' && renderCart()}
+                        {screen === 'checkout' && renderCheckout()}
+                        {screen === 'thank_you' && renderThankYou()}
+
+                        {/* --- GLOBAL POPUP OVERLAYS --- */}
+                        {popupAlert === 'warning70' && renderWarning70Popup()}
+                        {popupAlert === 'limit' && renderBudgetAlertPopup()}
+                        {isQtyPadVisible && renderQtyPadPopup()}
+
+                    </div>
+                </div>
+            );
+        }
+
+        // Mount React 18 Application inside Container context
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>

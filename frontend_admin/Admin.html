@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CartPunch System Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            500: '#ef6c00', // Matches the exact orange from the mockup
+                            600: '#e65100',
+                        },
+                        surface: '#f8fafc',
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body class="flex h-screen overflow-hidden text-slate-800">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-brand-500 text-white flex flex-col justify-between shrink-0 shadow-lg z-20">
+        <div>
+            <div class="flex items-center space-x-3 px-6 py-8">
+                <i data-lucide="scan-line" class="w-8 h-8"></i>
+                <h1 class="text-2xl font-bold tracking-tight">CartPunch</h1>
+            </div>
+
+            <nav class="space-y-1 px-3">
+                <button id="nav-dashboard" onclick="switchTab('dashboard')" class="w-full flex items-center space-x-3 px-4 py-3 rounded-md font-medium text-sm transition-all bg-white text-brand-500">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button id="nav-inventory" onclick="switchTab('inventory')" class="w-full flex items-center space-x-3 px-4 py-3 rounded-md font-medium text-sm transition-all text-white/90 hover:bg-white/10 hover:text-white">
+                    <i data-lucide="package" class="w-5 h-5"></i>
+                    <span>Product Management</span>
+                </button>
+                <button id="nav-carts" onclick="switchTab('carts')" class="w-full flex items-center space-x-3 px-4 py-3 rounded-md font-medium text-sm transition-all text-white/90 hover:bg-white/10 hover:text-white">
+                    <i data-lucide="shopping-cart" class="w-5 h-5"></i>
+                    <span>Cart Management</span>
+                </button>
+            </nav>
+        </div>
+
+        <div class="p-6">
+            <button class="flex items-center space-x-2 text-white/90 hover:text-white transition-colors">
+                <i data-lucide="log-out" class="w-5 h-5"></i>
+                <span class="font-medium text-sm">Logout</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        
+        <!-- Header area for dynamic titles (Optional if mimicking exact mockup design where title is inside the view) -->
+
+        <!-- Container -->
+        <div class="p-10 space-y-8 flex-1 w-full max-w-7xl mx-auto">
+            
+            <!-- Dashboard View -->
+            <div id="view-dashboard" class="space-y-8 animate-fade-in">
+                <!-- Top Header Section inside view -->
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h2 class="text-3xl font-bold text-slate-800 mb-6">System Dashboard</h2>
+                        <div class="border-l-4 border-brand-500 pl-4 py-1">
+                            <h3 class="text-lg font-bold text-slate-800">Welcome to CartPunch Admin</h3>
+                            <p class="text-sm text-slate-500">Monitor your smart shopping cart prototype modules and manage inventory in real-time.</p>
+                        </div>
+                    </div>
+                    <button onclick="simulateFirebaseSync(this)" class="flex items-center space-x-2 bg-emerald-100/50 hover:bg-emerald-100 text-emerald-600 px-4 py-2 rounded-full font-semibold text-sm border border-emerald-200 shadow-sm transition-colors focus:outline-none">
+                        <i data-lucide="refresh-cw" id="sync-icon" class="w-4 h-4"></i>
+                        <span id="sync-status">Firebase Synchronized</span>
+                    </button>
+                </div>
+
+                <!-- System Monitoring & Maintenance -->
+                <div>
+                    <h4 class="text-sm font-bold text-slate-700 mb-4">System Monitoring & Maintenance</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+                            <div class="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 shrink-0">
+                                <i data-lucide="wifi" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-slate-800">Wi-Fi Connection</p>
+                                <div class="flex items-center space-x-1.5 mt-1">
+                                    <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                    <p class="text-xs font-semibold text-emerald-600">Connected</p>
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-0.5">Ping: 24ms (Stable)</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+                            <div class="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-500 shrink-0">
+                                <i data-lucide="database" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-slate-800">Firebase Sync</p>
+                                <div class="flex items-center space-x-1.5 mt-1">
+                                    <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                    <p class="text-xs font-semibold text-emerald-600">Real-time Active</p>
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-0.5" id="last-sync-time">Last sync: Just now</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+                            <div class="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center text-purple-500 shrink-0">
+                                <i data-lucide="scan" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-slate-800">Scanner Status</p>
+                                <div class="flex items-center space-x-1.5 mt-1">
+                                    <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                    <p class="text-xs font-semibold text-emerald-600">Operational</p>
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-0.5">Module: Ready</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+                            <div class="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 shrink-0">
+                                <div class="w-6 h-6 rounded-full bg-emerald-200"></div>
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-slate-800">Display Module</p>
+                                <div class="flex items-center space-x-1.5 mt-1">
+                                    <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                    <p class="text-xs font-semibold text-emerald-600">Active</p>
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-0.5">No errors detected</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cart Management Summary -->
+                <div class="relative pt-3">
+                    <div class="absolute top-0 left-4 bg-surface px-2 text-sm font-bold text-slate-700 flex items-center space-x-2 z-10">
+                        <i data-lucide="shopping-cart" class="w-4 h-4 text-brand-500"></i>
+                        <span>Cart Management Summary</span>
+                    </div>
+                    <div class="border border-brand-500/50 rounded-xl p-6 bg-white/50 flex flex-wrap lg:flex-nowrap items-center gap-4">
+                        <button onclick="switchTab('carts'); filterCarts('Online')" class="text-left bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center space-x-4 flex-1 hover:border-brand-500 hover:shadow-md transition-all focus:outline-none active:scale-95">
+                            <div class="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500">
+                                <i data-lucide="shopping-cart" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <p class="text-2xl font-bold text-emerald-600 leading-none">2</p>
+                                <p class="text-xs font-bold text-slate-700 mt-1">Online Carts</p>
+                                <p class="text-[10px] text-slate-400">Active & Connected</p>
+                            </div>
+                        </button>
+
+                        <button onclick="switchTab('carts'); filterCarts('Offline')" class="text-left bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center space-x-4 flex-1 hover:border-brand-500 hover:shadow-md transition-all focus:outline-none active:scale-95">
+                            <div class="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-400">
+                                <i data-lucide="wifi-off" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <p class="text-2xl font-bold text-red-400 leading-none">2</p>
+                                <p class="text-xs font-bold text-slate-700 mt-1">Offline Carts</p>
+                                <p class="text-[10px] text-slate-400">Not Connected</p>
+                            </div>
+                        </button>
+
+                        <button onclick="switchTab('carts'); filterCarts('Low Battery')" class="text-left bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center space-x-4 flex-1 hover:border-brand-500 hover:shadow-md transition-all focus:outline-none active:scale-95">
+                            <div class="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-500">
+                                <i data-lucide="battery-low" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <p class="text-2xl font-bold text-amber-500 leading-none">1</p>
+                                <p class="text-xs font-bold text-slate-700 mt-1">Low Battery</p>
+                                <p class="text-[10px] text-slate-400">Needs Charging</p>
+                            </div>
+                        </button>
+
+                        <button onclick="switchTab('carts'); filterCarts('Error')" class="text-left bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center space-x-4 flex-1 hover:border-brand-500 hover:shadow-md transition-all focus:outline-none active:scale-95">
+                            <div class="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center text-rose-500">
+                                <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <p class="text-2xl font-bold text-rose-500 leading-none">1</p>
+                                <p class="text-xs font-bold text-slate-700 mt-1">Error Carts</p>
+                                <p class="text-[10px] text-slate-400">Needs Attention</p>
+                            </div>
+                        </button>
+
+                        <button onclick="switchTab('carts')" class="shrink-0 px-6 py-3 border border-brand-500 text-brand-600 font-bold text-sm rounded-lg hover:bg-brand-50 transition-colors flex items-center space-x-2 bg-white">
+                            <span>View Cart Management</span>
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Bottom Row: Activities & Sync -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Recent Activities -->
+                    <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                        <div class="flex items-center space-x-2 mb-6 text-slate-700 font-bold">
+                            <i data-lucide="activity" class="w-5 h-5"></i>
+                            <span>Recent Database Activities</span>
+                        </div>
+                        <div class="space-y-6 relative before:absolute before:inset-0 before:ml-[5px] before:-translate-x-px before:h-full before:w-0.5 before:bg-slate-100" id="activity-log">
+                            <!-- Populated dynamically via JS -->
+                            <div class="relative flex items-start space-x-4">
+                                <div class="w-3 h-3 rounded-full bg-brand-500 mt-1 relative z-10 shrink-0"></div>
+                                <div>
+                                    <p class="text-xs text-slate-400 font-medium">Just now</p>
+                                    <p class="text-sm font-medium text-slate-700 mt-0.5">Admin dashboard accessed</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Total Products Synced -->
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-8 flex flex-col items-center justify-center text-center">
+                        <div class="w-16 h-16 rounded-full bg-brand-50 flex items-center justify-center text-brand-500 mb-4">
+                            <i data-lucide="database" class="w-8 h-8"></i>
+                        </div>
+                        <h3 id="stat-total-products" class="text-4xl font-extrabold text-slate-800">0</h3>
+                        <p class="text-xs text-slate-500 font-medium mt-1 mb-8">Total Products Synced</p>
+                        
+                        <button onclick="forceSync()" class="w-full py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow-md shadow-brand-500/20 transition-all">
+                            Force Sync Now
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Management View -->
+            <div id="view-inventory" class="hidden space-y-6 animate-fade-in">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-3xl font-bold text-slate-800">Product Management</h2>
+                    <button onclick="openAddModal()" class="flex items-center space-x-2 bg-brand-500 hover:bg-brand-600 text-white font-bold px-5 py-2.5 rounded-lg shadow-md shadow-brand-500/20 transition-all text-sm">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span>Add New Item</span>
+                    </button>
+                </div>
+
+                <!-- Search & Filters -->
+                <div class="flex items-center justify-between gap-4 flex-wrap">
+                    <div class="relative flex-1 max-w-md min-w-[250px]">
+                        <i data-lucide="search" class="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input id="search-input" oninput="filterProducts()" type="text" placeholder="Search by Barcode or Name..." class="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 shadow-sm">
+                    </div>
+                    <div class="flex items-center space-x-3 overflow-x-auto pb-1 hide-scrollbar">
+                        <select id="filter-stock" onchange="filterProducts()" class="px-4 py-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:border-brand-500 font-semibold shadow-sm cursor-pointer hover:bg-slate-50 transition-colors">
+                            <option value="All">All Stock</option>
+                            <option value="High Stock">High Stock</option>
+                            <option value="Moderate Stock">Moderate Stock</option>
+                            <option value="Low Stock">Low Stock</option>
+                        </select>
+                        <select id="sort-by" onchange="filterProducts()" class="px-4 py-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:border-brand-500 font-semibold shadow-sm cursor-pointer hover:bg-slate-50 transition-colors">
+                            <option value="default">Default Sort</option>
+                            <option value="name-asc">Name (A-Z)</option>
+                            <option value="name-desc">Name (Z-A)</option>
+                            <option value="price-asc">Price (Lowest)</option>
+                            <option value="price-desc">Price (Highest)</option>
+                        </select>
+                    </div>
+                    <div class="text-sm text-slate-500 font-semibold ml-auto whitespace-nowrap" id="product-count-label">
+                        Showing 0 items
+                    </div>
+                </div>
+
+                <!-- Products Table -->
+                <div class="bg-white rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                            <tr>
+                                <th class="p-4 pl-6">Barcode ID</th>
+                                <th class="p-4">Product Name</th>
+                                <th class="p-4">Price (₱)</th>
+                                <th class="p-4">Stock Status</th>
+                                <th class="p-4 text-right pr-6">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="products-table-body" class="divide-y divide-slate-100">
+                            <tr>
+                                <td colspan="5" class="p-8 text-center text-slate-400 font-medium">Loading products from Firebase...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Cart Management View -->
+            <div id="view-carts" class="hidden space-y-6 animate-fade-in">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h2 class="text-3xl font-bold text-slate-800 mb-6">Cart Management</h2>
+                        <div class="border-l-4 border-rose-500 pl-4 py-1">
+                            <h3 class="text-lg font-bold text-slate-800">Smart Cart Monitoring</h3>
+                            <p class="text-sm text-slate-500">Monitor the status, battery level, and health of all smart carts in real-time.</p>
+                        </div>
+                    </div>
+                    <button onclick="simulateFirebaseSync(this)" class="flex items-center space-x-2 bg-emerald-100/50 hover:bg-emerald-100 text-emerald-600 px-4 py-2 rounded-full font-semibold text-sm border border-emerald-200 shadow-sm transition-all focus:outline-none active:scale-95">
+                        <i data-lucide="refresh-cw" class="w-4 h-4" id="sync-icon"></i>
+                        <span>Firebase Synchronized</span>
+                    </button>
+                </div>
+
+                <!-- Stats summary (same as dashboard but for carts tab) -->
+                <div class="flex gap-4 mb-6">
+                    <button onclick="filterCarts('Online')" class="text-left bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4 flex-1 hover:border-brand-500 hover:shadow-md transition-all focus:outline-none active:scale-95">
+                        <div class="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500">
+                            <i data-lucide="shopping-cart" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <p class="text-2xl font-bold text-emerald-600 leading-none">2</p>
+                            <p class="text-xs font-bold text-slate-700 mt-1">Online Carts</p>
+                            <p class="text-[10px] text-slate-400">Active & Connected</p>
+                        </div>
+                    </button>
+
+                    <button onclick="filterCarts('Offline')" class="text-left bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4 flex-1 hover:border-brand-500 hover:shadow-md transition-all focus:outline-none active:scale-95">
+                        <div class="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-400">
+                            <i data-lucide="wifi-off" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <p class="text-2xl font-bold text-red-400 leading-none">2</p>
+                            <p class="text-xs font-bold text-slate-700 mt-1">Offline Carts</p>
+                            <p class="text-[10px] text-slate-400">Not Connected</p>
+                        </div>
+                    </button>
+
+                    <button onclick="filterCarts('Low Battery')" class="text-left bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4 flex-1 hover:border-brand-500 hover:shadow-md transition-all focus:outline-none active:scale-95">
+                        <div class="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-500">
+                            <i data-lucide="battery-low" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <p class="text-2xl font-bold text-amber-500 leading-none">1</p>
+                            <p class="text-xs font-bold text-slate-700 mt-1">Low Battery</p>
+                            <p class="text-[10px] text-slate-400">Needs Charging</p>
+                        </div>
+                    </button>
+
+                    <button onclick="filterCarts('Error')" class="text-left bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4 flex-1 hover:border-brand-500 hover:shadow-md transition-all focus:outline-none active:scale-95">
+                        <div class="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center text-rose-500">
+                            <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <p class="text-2xl font-bold text-rose-500 leading-none">1</p>
+                            <p class="text-xs font-bold text-slate-700 mt-1">Error Carts</p>
+                            <p class="text-[10px] text-slate-400">Needs Attention</p>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Carts Table -->
+                <div class="bg-white rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                    <div class="flex items-center justify-between p-4 border-b border-slate-200">
+                        <h4 class="font-bold text-slate-800">All Smart Carts</h4>
+                        <div class="flex space-x-4">
+                            <div class="relative">
+                                <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                <input type="text" id="cart-search-input" oninput="filterCarts('search')" placeholder="Search cart..." class="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500">
+                            </div>
+                            <select id="cart-status-select" onchange="filterCarts('select')" class="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:border-brand-500">
+                                <option value="All">All Status</option>
+                                <option value="Online">Online</option>
+                                <option value="Offline">Offline</option>
+                            </select>
+                        </div>
+                    </div>
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                            <tr>
+                                <th class="p-4 pl-6">Cart Name</th>
+                                <th class="p-4">Status</th>
+                                <th class="p-4">Battery Level</th>
+                                <th class="p-4">Last Seen</th>
+                                <th class="p-4">Message</th>
+                                <th class="p-4 text-right pr-6">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <!-- Hardcoded Offline Carts as requested -->
+                            <tr class="cart-row hover:bg-slate-50 transition-colors group" data-status="Online" data-cart="Cart01">
+                                <td class="p-4 pl-6 font-bold text-slate-800 flex items-center space-x-2"><i data-lucide="shopping-cart" class="w-4 h-4 text-emerald-500"></i><span>Cart01</span></td>
+                                <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center space-x-1 w-max"><div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div><span>Online</span></span></td>
+                                <td class="p-4 font-mono text-slate-600 flex items-center space-x-2"><span>95%</span><i data-lucide="battery-charging" class="w-4 h-4 text-emerald-500"></i></td>
+                                <td class="p-4">
+                                    <p class="font-medium text-slate-700">Just now</p>
+                                    <p class="text-[10px] text-slate-400 flex items-center space-x-1"><div class="w-1.5 h-1.5 rounded-full bg-emerald-400"></div><span>Connected</span></p>
+                                </td>
+                                <td class="p-4 text-emerald-600 flex items-center space-x-2 font-medium"><i data-lucide="check-circle" class="w-4 h-4"></i><span>Connected</span></td>
+                                <td class="p-4 text-right pr-6"><button onclick="openScannerModal()" class="px-3 py-1.5 border border-slate-200 rounded-md text-slate-500 hover:text-brand-500 hover:border-brand-500 transition-colors text-xs font-bold flex items-center space-x-1 ml-auto"><i data-lucide="eye" class="w-3 h-3"></i><span>View Details</span></button></td>
+                            </tr>
+                            <tr class="cart-row hover:bg-slate-50 transition-colors group" data-status="Offline" data-cart="Cart02">
+                                <td class="p-4 pl-6 font-bold text-slate-800 flex items-center space-x-2"><i data-lucide="shopping-cart" class="w-4 h-4 text-slate-400"></i><span>Cart02</span></td>
+                                <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-500 border border-rose-100 flex items-center space-x-1 w-max"><div class="w-1.5 h-1.5 rounded-full bg-rose-500"></div><span>Offline</span></span></td>
+                                <td class="p-4 font-mono text-slate-500 flex items-center space-x-2"><span>-</span><i data-lucide="battery" class="w-4 h-4 text-slate-300"></i></td>
+                                <td class="p-4">
+                                    <p class="font-medium text-slate-700">1 hour ago</p>
+                                    <p class="text-[10px] text-slate-400 flex items-center space-x-1"><div class="w-1.5 h-1.5 rounded-full bg-slate-300"></div><span>No connection</span></p>
+                                </td>
+                                <td class="p-4 text-rose-500 flex items-center space-x-2 font-medium"><i data-lucide="x-circle" class="w-4 h-4"></i><span>Not Connected</span></td>
+                                <td class="p-4 text-right pr-6"><button onclick="openScannerModal()" class="px-3 py-1.5 border border-slate-200 rounded-md text-slate-500 hover:text-brand-500 hover:border-brand-500 transition-colors text-xs font-bold flex items-center space-x-1 ml-auto"><i data-lucide="eye" class="w-3 h-3"></i><span>View Details</span></button></td>
+                            </tr>
+                            <tr class="cart-row hover:bg-slate-50 transition-colors group" data-status="Low Battery" data-cart="Cart03">
+                                <td class="p-4 pl-6 font-bold text-slate-800 flex items-center space-x-2"><i data-lucide="shopping-cart" class="w-4 h-4 text-amber-500"></i><span>Cart03</span></td>
+                                <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-600 border border-amber-100 flex items-center space-x-1 w-max"><div class="w-1.5 h-1.5 rounded-full bg-amber-500"></div><span>Online</span></span></td>
+                                <td class="p-4 font-mono text-amber-600 flex items-center space-x-2 font-bold"><span>12%</span><i data-lucide="battery-low" class="w-4 h-4 text-amber-500"></i></td>
+                                <td class="p-4">
+                                    <p class="font-medium text-slate-700">Just now</p>
+                                    <p class="text-[10px] text-slate-400 flex items-center space-x-1"><div class="w-1.5 h-1.5 rounded-full bg-emerald-400"></div><span>Connected</span></p>
+                                </td>
+                                <td class="p-4 text-amber-600 flex items-center space-x-2 font-medium"><i data-lucide="alert-circle" class="w-4 h-4"></i><span>Low Battery</span></td>
+                                <td class="p-4 text-right pr-6"><button onclick="openScannerModal()" class="px-3 py-1.5 border border-slate-200 rounded-md text-slate-500 hover:text-brand-500 hover:border-brand-500 transition-colors text-xs font-bold flex items-center space-x-1 ml-auto"><i data-lucide="eye" class="w-3 h-3"></i><span>View Details</span></button></td>
+                            </tr>
+                            <tr class="cart-row hover:bg-slate-50 transition-colors group" data-status="Error" data-cart="Cart04">
+                                <td class="p-4 pl-6 font-bold text-slate-800 flex items-center space-x-2"><i data-lucide="shopping-cart" class="w-4 h-4 text-rose-500"></i><span>Cart04</span></td>
+                                <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-600 border border-rose-100 flex items-center space-x-1 w-max"><div class="w-1.5 h-1.5 rounded-full bg-rose-500"></div><span>Error</span></span></td>
+                                <td class="p-4 font-mono text-slate-600 flex items-center space-x-2"><span>85%</span><i data-lucide="battery" class="w-4 h-4 text-slate-400"></i></td>
+                                <td class="p-4">
+                                    <p class="font-medium text-slate-700">Just now</p>
+                                    <p class="text-[10px] text-slate-400 flex items-center space-x-1"><div class="w-1.5 h-1.5 rounded-full bg-rose-400"></div><span>API Error</span></p>
+                                </td>
+                                <td class="p-4 text-rose-600 flex items-center space-x-2 font-medium"><i data-lucide="alert-triangle" class="w-4 h-4"></i><span>Scanner Error</span></td>
+                                <td class="p-4 text-right pr-6"><button onclick="openScannerModal()" class="px-3 py-1.5 border border-slate-200 rounded-md text-slate-500 hover:text-brand-500 hover:border-brand-500 transition-colors text-xs font-bold flex items-center space-x-1 ml-auto"><i data-lucide="eye" class="w-3 h-3"></i><span>View Details</span></button></td>
+                            </tr>
+                            <tr class="cart-row hover:bg-slate-50 transition-colors group" data-status="Online" data-cart="Cart05">
+                                <td class="p-4 pl-6 font-bold text-slate-800 flex items-center space-x-2"><i data-lucide="shopping-cart" class="w-4 h-4 text-emerald-500"></i><span>Cart05</span></td>
+                                <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center space-x-1 w-max"><div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div><span>Online</span></span></td>
+                                <td class="p-4 font-mono text-slate-600 flex items-center space-x-2"><span>100%</span><i data-lucide="battery-charging" class="w-4 h-4 text-emerald-500"></i></td>
+                                <td class="p-4">
+                                    <p class="font-medium text-slate-700">Just now</p>
+                                    <p class="text-[10px] text-slate-400 flex items-center space-x-1"><div class="w-1.5 h-1.5 rounded-full bg-emerald-400"></div><span>Connected</span></p>
+                                </td>
+                                <td class="p-4 text-emerald-600 flex items-center space-x-2 font-medium"><i data-lucide="check-circle" class="w-4 h-4"></i><span>Connected</span></td>
+                                <td class="p-4 text-right pr-6"><button onclick="openScannerModal()" class="px-3 py-1.5 border border-slate-200 rounded-md text-slate-500 hover:text-brand-500 hover:border-brand-500 transition-colors text-xs font-bold flex items-center space-x-1 ml-auto"><i data-lucide="eye" class="w-3 h-3"></i><span>View Details</span></button></td>
+                            </tr>
+                            <tr class="cart-row hover:bg-slate-50 transition-colors group" data-status="Offline" data-cart="Cart06">
+                                <td class="p-4 pl-6 font-bold text-slate-800 flex items-center space-x-2"><i data-lucide="shopping-cart" class="w-4 h-4 text-slate-400"></i><span>Cart06</span></td>
+                                <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-500 border border-rose-100 flex items-center space-x-1 w-max"><div class="w-1.5 h-1.5 rounded-full bg-rose-500"></div><span>Offline</span></span></td>
+                                <td class="p-4 font-mono text-slate-500 flex items-center space-x-2"><span>-</span><i data-lucide="battery" class="w-4 h-4 text-slate-300"></i></td>
+                                <td class="p-4">
+                                    <p class="font-medium text-slate-700">1 day ago</p>
+                                    <p class="text-[10px] text-slate-400 flex items-center space-x-1"><div class="w-1.5 h-1.5 rounded-full bg-slate-300"></div><span>No connection</span></p>
+                                </td>
+                                <td class="p-4 text-rose-500 flex items-center space-x-2 font-medium"><i data-lucide="x-circle" class="w-4 h-4"></i><span>Not Connected</span></td>
+                                <td class="p-4 text-right pr-6"><button onclick="openScannerModal()" class="px-3 py-1.5 border border-slate-200 rounded-md text-slate-500 hover:text-brand-500 hover:border-brand-500 transition-colors text-xs font-bold flex items-center space-x-1 ml-auto"><i data-lucide="eye" class="w-3 h-3"></i><span>View Details</span></button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="bg-slate-50 border-t border-slate-200 p-4 flex justify-between items-center text-xs text-slate-500">
+                        <span id="cart-showing-text">Showing 6 to 6 of 6 carts</span>
+                        <button id="auto-refresh-btn" onclick="toggleAutoRefresh()" class="flex items-center space-x-2 text-emerald-600 hover:text-emerald-700 transition-colors focus:outline-none">
+                            <i data-lucide="refresh-cw" class="w-3 h-3 animate-spin"></i>
+                            <span class="font-semibold">Auto refresh: ON</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Add/Edit Product Modal -->
+    <div id="product-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-6 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+                <h3 id="modal-title" class="text-xl font-bold text-slate-800">Add New Product</h3>
+                <button onclick="closeProductModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form id="product-form" onsubmit="saveProduct(event)" class="space-y-4 text-slate-700">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Barcode Number</label>
+                    <input id="input-barcode" type="text" required placeholder="e.g. 4806026205773" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 font-mono">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Product Name</label>
+                    <input id="input-name" type="text" required placeholder="e.g. Century Tuna Flakes 155g" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Price (₱)</label>
+                        <input id="input-price" type="number" step="0.01" required placeholder="56.60" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Stock Level</label>
+                        <select id="input-stock" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+                            <option value="High Stock">High Stock</option>
+                            <option value="Moderate Stock">Moderate Stock</option>
+                            <option value="Low Stock">Low Stock</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="pt-4 flex space-x-3">
+                    <button type="button" onclick="closeProductModal()" class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-lg text-sm transition-all">Cancel</button>
+                    <button type="submit" class="flex-1 py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg text-sm shadow-md shadow-brand-500/20 transition-all">Save Product</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <style>
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+
+    <script>
+        // Firebase Setup
+        const firebaseConfig = {
+            apiKey: "AIzaSyDnOqNF8U-uNKDQEZiR0AyMd6JAbFNEIFE",
+            authDomain: "cartpunch-5b2d8.firebaseapp.com",
+            databaseURL: "https://cartpunch-5b2d8-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "cartpunch-5b2d8",
+            storageBucket: "cartpunch-5b2d8.firebasestorage.app",
+            messagingSenderId: "520710359414",
+            appId: "1:520710359414:web:24f13d22d295deb2a0d257"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let allProducts = [];
+        let activityLogs = [];
+
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // Ensure state persists across reloads and URL hash changes
+        document.addEventListener("DOMContentLoaded", () => {
+            let savedTab = window.location.hash.replace('#', '');
+            if (!['dashboard', 'inventory', 'carts'].includes(savedTab)) {
+                savedTab = localStorage.getItem("cartpunch_admin_tab") || "dashboard";
+            }
+            switchTab(savedTab);
+            
+            // Add initial dummy activity logs mimicking the mockup
+            addActivityLog("10:42 AM", "Price updated for 'Nescafe Classic 25g'", "amber");
+            addActivityLog("09:15 AM", "New barcode registered: 4801981110005", "emerald");
+            addActivityLog("Yesterday", "Category 'Snack Dips' modified", "slate");
+        });
+
+        window.addEventListener('hashchange', () => {
+            const hash = window.location.hash.replace('#', '');
+            if (['dashboard', 'inventory', 'carts'].includes(hash)) {
+                switchTab(hash, false);
+            }
+        });
+
+        // Listen for Realtime Products
+        db.ref('products').on('value', (snapshot) => {
+            const data = snapshot.val();
+            allProducts = [];
+            if (data) {
+                Object.keys(data).forEach(key => {
+                    allProducts.push({
+                        barcode: key,
+                        ...data[key]
+                    });
+                });
+            }
+            // Update Dashboard Stat
+            document.getElementById('stat-total-products').innerText = allProducts.length.toLocaleString();
+            
+            // Update timestamp
+            const now = new Date();
+            document.getElementById('last-sync-time').innerText = `Last sync: ${now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+
+            renderProducts(allProducts);
+        });
+
+        function forceSync() {
+            const syncBtn = document.getElementById('sync-status');
+            syncBtn.innerText = "Syncing...";
+            syncBtn.parentElement.classList.replace('text-emerald-600', 'text-brand-500');
+            syncBtn.parentElement.classList.replace('bg-emerald-100/50', 'bg-brand-50');
+            
+            setTimeout(() => {
+                syncBtn.innerText = "Firebase Synchronized";
+                syncBtn.parentElement.classList.replace('text-brand-500', 'text-emerald-600');
+                syncBtn.parentElement.classList.replace('bg-brand-50', 'bg-emerald-100/50');
+                const now = new Date();
+                document.getElementById('last-sync-time').innerText = `Last sync: ${now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+                addActivityLog("Just now", "Manual forced sync triggered", "brand");
+            }, 800);
+        }
+
+        function addActivityLog(time, text, color) {
+            const container = document.getElementById('activity-log');
+            const colorClass = color === 'brand' ? 'bg-brand-500' : color === 'emerald' ? 'bg-emerald-500' : color === 'amber' ? 'bg-amber-500' : 'bg-slate-400';
+            
+            const logHTML = `
+                <div class="relative flex items-start space-x-4 animate-fade-in">
+                    <div class="w-3 h-3 rounded-full ${colorClass} mt-1.5 relative z-10 shrink-0 border-2 border-white"></div>
+                    <div>
+                        <p class="text-[11px] text-slate-400 font-bold">${time}</p>
+                        <p class="text-sm font-medium text-slate-700 mt-0.5">${text}</p>
+                    </div>
+                </div>
+            `;
+            // insert at top
+            container.insertAdjacentHTML('afterbegin', logHTML);
+            
+            // keep only top 4
+            if(container.children.length > 4) {
+                container.removeChild(container.lastElementChild);
+            }
+        }
+
+        function renderProducts(list) {
+            const tbody = document.getElementById('products-table-body');
+            document.getElementById('product-count-label').innerText = `Showing ${list.length.toLocaleString()} items`;
+
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400 font-medium">No matching products found.</td></tr>`;
+                return;
+            }
+
+            // Limit rendering to 100 for fast UI performance
+            const displayList = list.slice(0, 100);
+
+            tbody.innerHTML = displayList.map(item => {
+                const safeBarcode = item.barcode.replace(/'/g, "\\'");
+                return `
+                <tr class="hover:bg-slate-50 transition-colors group">
+                    <td class="p-4 pl-6 font-mono font-medium text-slate-500">${item.barcode}</td>
+                    <td class="p-4 font-bold text-slate-800">${item.name}</td>
+                    <td class="p-4 font-mono text-slate-700 font-semibold">₱${parseFloat(item.price || 0).toFixed(2)}</td>
+                    <td class="p-4">
+                        <span class="px-2.5 py-1 rounded-md text-xs font-bold shadow-sm ${
+                            item.stock === 'High Stock' ? 'bg-green-500 text-white border border-green-600' :
+                            item.stock === 'Moderate Stock' ? 'bg-yellow-400 text-yellow-900 border border-yellow-500' :
+                            'bg-red-500 text-white border border-red-600'
+                        }">${item.stock || 'High Stock'}</span>
+                    </td>
+                    <td class="p-4 text-right pr-6 space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onclick="editProduct('${safeBarcode}')" class="p-2 text-slate-400 hover:text-brand-500 hover:bg-brand-50 rounded-md transition-all"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                        <button onclick="deleteProduct('${safeBarcode}')" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function filterProducts() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const stockFilter = document.getElementById('filter-stock').value;
+            const sortBy = document.getElementById('sort-by').value;
+
+            // 1. Filter by Search Query & Stock Status
+            let filtered = allProducts.filter(p => {
+                const matchesSearch = p.barcode.toLowerCase().includes(query) || p.name.toLowerCase().includes(query);
+                const matchesStock = stockFilter === 'All' || (p.stock || 'High Stock') === stockFilter;
+                return matchesSearch && matchesStock;
+            });
+
+            // 2. Sort the array
+            filtered.sort((a, b) => {
+                if (sortBy === 'name-asc') {
+                    return a.name.localeCompare(b.name);
+                } else if (sortBy === 'name-desc') {
+                    return b.name.localeCompare(a.name);
+                } else if (sortBy === 'price-asc') {
+                    return (parseFloat(a.price) || 0) - (parseFloat(b.price) || 0);
+                } else if (sortBy === 'price-desc') {
+                    return (parseFloat(b.price) || 0) - (parseFloat(a.price) || 0);
+                }
+                return 0; // default (keeps Firebase's default key order)
+            });
+
+            renderProducts(filtered);
+        }
+
+        // Navigation Tabs with localStorage persistence
+        function switchTab(tab, updateHash = true) {
+            localStorage.setItem("cartpunch_admin_tab", tab);
+            if (updateHash) {
+                history.pushState(null, null, `#${tab}`);
+            }
+            
+            ['dashboard', 'inventory', 'carts'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hidden');
+                document.getElementById(`nav-${t}`).className = 'w-full flex items-center space-x-3 px-4 py-3 rounded-md font-medium text-sm transition-all text-white/90 hover:bg-white/10 hover:text-white';
+            });
+            
+            document.getElementById(`view-${tab}`).classList.remove('hidden');
+            document.getElementById(`nav-${tab}`).className = 'w-full flex items-center space-x-3 px-4 py-3 rounded-md font-medium text-sm transition-all bg-white text-brand-500 shadow-sm';
+        }
+
+        let editingBarcode = null;
+
+        // Modal Handlers
+        function openAddModal() {
+            editingBarcode = null;
+            document.getElementById('modal-title').innerText = 'Add New Product';
+            document.getElementById('input-barcode').value = '';
+            document.getElementById('input-barcode').disabled = false;
+            document.getElementById('input-name').value = '';
+            document.getElementById('input-price').value = '';
+            document.getElementById('input-stock').value = 'High Stock';
+            document.getElementById('product-modal').classList.remove('hidden');
+        }
+
+        function closeProductModal() {
+            document.getElementById('product-modal').classList.add('hidden');
+        }
+
+        function editProduct(barcode) {
+            const prod = allProducts.find(p => p.barcode === barcode);
+            if (!prod) return;
+            editingBarcode = barcode;
+            document.getElementById('modal-title').innerText = 'Edit Product';
+            document.getElementById('input-barcode').value = barcode;
+            document.getElementById('input-barcode').disabled = false;
+            document.getElementById('input-name').value = prod.name;
+            document.getElementById('input-price').value = prod.price;
+            document.getElementById('input-stock').value = prod.stock || 'High Stock';
+            document.getElementById('product-modal').classList.remove('hidden');
+        }
+
+        function saveProduct(e) {
+            e.preventDefault();
+            const newBarcode = document.getElementById('input-barcode').value.trim();
+            const name = document.getElementById('input-name').value.trim();
+            const price = parseFloat(document.getElementById('input-price').value);
+            const stock = document.getElementById('input-stock').value;
+
+            if (!newBarcode || !name || isNaN(price)) return;
+
+            const productData = {
+                name: name,
+                price: price,
+                stock: stock
+            };
+
+            // If barcode was edited to a new number, delete old barcode entry first
+            if (editingBarcode && editingBarcode !== newBarcode) {
+                db.ref(`products/${editingBarcode}`).remove();
+            }
+
+            db.ref(`products/${newBarcode}`).set(productData).then(() => {
+                const now = new Date();
+                addActivityLog(now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), `Saved product: ${name}`, 'emerald');
+                closeProductModal();
+            }).catch(error => {
+                alert("Error saving product: " + error.message);
+                console.error("Firebase save error:", error);
+            });
+        }
+
+        function deleteProduct(barcode) {
+            if (confirm(`Are you sure you want to delete product "${barcode}"?`)) {
+                db.ref(`products/${barcode}`).remove().then(() => {
+                    const now = new Date();
+                    addActivityLog(now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), `Deleted barcode: ${barcode}`, 'rose');
+                });
+            }
+        }
+        
+        // --- Added Interactive Logic ---
+        function simulateFirebaseSync(btn) {
+            const icon = btn.querySelector('#sync-icon');
+            icon.classList.add('animate-spin');
+            setTimeout(() => icon.classList.remove('animate-spin'), 1000);
+        }
+
+        let autoRefreshStatus = true;
+        function toggleAutoRefresh() {
+            autoRefreshStatus = !autoRefreshStatus;
+            const btn = document.getElementById('auto-refresh-btn');
+            if (autoRefreshStatus) {
+                btn.className = "flex items-center space-x-2 text-emerald-600 hover:text-emerald-700 transition-colors focus:outline-none";
+                btn.innerHTML = `<i data-lucide="refresh-cw" class="w-3 h-3 animate-spin"></i><span class="font-semibold">Auto refresh: ON</span>`;
+            } else {
+                btn.className = "flex items-center space-x-2 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none";
+                btn.innerHTML = `<i data-lucide="refresh-cw" class="w-3 h-3"></i><span class="font-semibold">Auto refresh: OFF</span>`;
+            }
+            lucide.createIcons();
+        }
+
+        let modalAutoRefreshStatus = true;
+        function toggleModalAutoRefresh() {
+            modalAutoRefreshStatus = !modalAutoRefreshStatus;
+            const btn = document.getElementById('modal-auto-refresh-btn');
+            if (modalAutoRefreshStatus) {
+                btn.className = "flex items-center space-x-2 text-emerald-600 hover:text-emerald-700 transition-colors focus:outline-none mb-1";
+                btn.innerHTML = `<i data-lucide="refresh-cw" class="w-4 h-4 animate-spin"></i><span class="font-semibold">Auto refresh: ON</span>`;
+            } else {
+                btn.className = "flex items-center space-x-2 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none mb-1";
+                btn.innerHTML = `<i data-lucide="refresh-cw" class="w-4 h-4"></i><span class="font-semibold">Auto refresh: OFF</span>`;
+            }
+            lucide.createIcons();
+        }
+
+        function filterCarts(source) {
+            let status = 'All';
+            const selectEl = document.getElementById('cart-status-select');
+            const searchEl = document.getElementById('cart-search-input');
+            const query = searchEl.value.toLowerCase();
+            
+            if (source === 'Online' || source === 'Offline' || source === 'Low Battery' || source === 'Error') {
+                status = source;
+                selectEl.value = (source === 'Online' || source === 'Offline') ? source : 'All';
+                searchEl.value = ''; // clear search when using quick filters
+            } else {
+                status = selectEl.value;
+            }
+
+            const rows = document.querySelectorAll('.cart-row');
+            let visibleCount = 0;
+            rows.forEach(row => {
+                const rowStatus = row.dataset.status;
+                const cartName = row.dataset.cart.toLowerCase();
+                const matchesStatus = (status === 'All' || rowStatus === status);
+                const matchesSearch = cartName.includes(query);
+
+                if (matchesStatus && matchesSearch) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            document.getElementById('cart-showing-text').innerText = `Showing ${visibleCount} to ${visibleCount} of 6 carts`;
+        }
+
+        function filterModalCarts() {
+            const scannerStatus = document.getElementById('modal-scanner-select').value;
+            const displayStatus = document.getElementById('modal-display-select').value;
+            const query = document.getElementById('modal-search-input').value.toLowerCase();
+
+            const rows = document.querySelectorAll('.modal-cart-row');
+            let visibleCount = 0;
+            rows.forEach(row => {
+                const rowScanner = row.dataset.scanner;
+                const rowDisplay = row.dataset.display;
+                const cartName = row.dataset.cart.toLowerCase();
+                
+                const matchesScanner = (scannerStatus === 'All' || rowScanner === scannerStatus);
+                const matchesDisplay = (displayStatus === 'All' || rowDisplay === displayStatus);
+                const matchesSearch = cartName.includes(query);
+
+                if (matchesScanner && matchesDisplay && matchesSearch) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            document.getElementById('modal-cart-showing-text').innerText = `Showing 1 to ${visibleCount} of 6 carts`;
+        }
+
+        function openScannerModal() {
+            document.getElementById('scanner-modal').classList.remove('hidden');
+        }
+
+        function closeScannerModal() {
+            document.getElementById('scanner-modal').classList.add('hidden');
+        }
+    </script>
+
+    <!-- Scanner Status Modal (Image 4 Mockup) -->
+    <div id="scanner-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
+        <div class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="bg-brand-500 text-white p-6 flex justify-between items-center">
+                <h3 class="text-xl font-bold">Display & Scanner Status</h3>
+                <button onclick="closeScannerModal()" class="text-white/80 hover:text-white transition-colors focus:outline-none">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto flex-1">
+                <div class="flex items-center justify-between mb-6">
+                    <h4 class="font-bold text-slate-800">All Smart Carts</h4>
+                    <div class="flex space-x-4">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Scanner:</span>
+                            <select id="modal-scanner-select" onchange="filterModalCarts()" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:border-brand-500 shadow-sm">
+                                <option value="All">All</option>
+                                <option value="Operational">Operational</option>
+                                <option value="Non-operational">Non-operational</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Display:</span>
+                            <select id="modal-display-select" onchange="filterModalCarts()" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:border-brand-500 shadow-sm">
+                                <option value="All">All</option>
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                            </select>
+                        </div>
+                        <div class="relative">
+                            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input type="text" id="modal-search-input" oninput="filterModalCarts()" placeholder="Search cart..." class="pl-9 pr-4 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500 shadow-sm">
+                        </div>
+                    </div>
+                </div>
+
+                <table class="w-full text-left text-sm text-slate-600 border border-slate-200 rounded-lg overflow-hidden">
+                    <thead class="bg-slate-50 text-xs font-bold text-slate-500 border-b border-slate-200">
+                        <tr>
+                            <th class="p-4 pl-6">Cart Name</th>
+                            <th class="p-4">Scanner Status</th>
+                            <th class="p-4">Display Module</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <tr class="modal-cart-row hover:bg-slate-50" data-cart="Cart01" data-scanner="Operational" data-display="Active">
+                            <td class="p-4 pl-6 font-bold text-slate-800 flex items-center space-x-2"><i data-lucide="shopping-cart" class="w-4 h-4 text-slate-400"></i><span>Cart01</span></td>
+                            <td class="p-4"><span class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 flex items-center space-x-2 w-max"><div class="w-2 h-2 rounded-full bg-green-500"></div><span>Operational</span></span></td>
+                            <td class="p-4"><span class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 flex items-center space-x-2 w-max"><div class="w-2 h-2 rounded-full bg-green-500"></div><span>Active</span></span></td>
+                        </tr>
+                        <tr class="modal-cart-row hover:bg-slate-50" data-cart="Cart02" data-scanner="Non-operational" data-display="Active">
+                            <td class="p-4 pl-6 font-bold text-slate-800 flex items-center space-x-2"><i data-lucide="shopping-cart" class="w-4 h-4 text-slate-400"></i><span>Cart02</span></td>
+                            <td class="p-4"><span class="px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-700 flex items-center space-x-2 w-max"><div class="w-2 h-2 rounded-full bg-rose-500"></div><span>Non-operational</span></span></td>
+                            <td class="p-4"><span class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 flex items-center space-x-2 w-max"><div class="w-2 h-2 rounded-full bg-green-500"></div><span>Active</span></span></td>
+                        </tr>
+                        <tr class="modal-cart-row hover:bg-slate-50" data-cart="Cart03" data-scanner="Operational" data-display="Active">
+                            <td class="p-4 pl-6 font-bold text-slate-800 flex items-center space-x-2"><i data-lucide="shopping-cart" class="w-4 h-4 text-slate-400"></i><span>Cart03</span></td>
+                            <td class="p-4"><span class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 flex items-center space-x-2 w-max"><div class="w-2 h-2 rounded-full bg-green-500"></div><span>Operational</span></span></td>
+                            <td class="p-4"><span class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 flex items-center space-x-2 w-max"><div class="w-2 h-2 rounded-full bg-green-500"></div><span>Active</span></span></td>
+                        </tr>
+                        <tr class="modal-cart-row hover:bg-slate-50" data-cart="Cart04" data-scanner="Non-operational" data-display="Active">
+                            <td class="p-4 pl-6 font-bold text-slate-800 flex items-center space-x-2"><i data-lucide="shopping-cart" class="w-4 h-4 text-slate-400"></i><span>Cart04</span></td>
+                            <td class="p-4"><span class="px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-700 flex items-center space-x-2 w-max"><div class="w-2 h-2 rounded-full bg-rose-500"></div><span>Non-operational</span></span></td>
+                            <td class="p-4"><span class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 flex items-center space-x-2 w-max"><div class="w-2 h-2 rounded-full bg-green-500"></div><span>Active</span></span></td>
+                        </tr>
+                        <tr class="modal-cart-row hover:bg-slate-50" data-cart="Cart05" data-scanner="Operational" data-display="Active">
+                            <td class="p-4 pl-6 font-bold text-slate-800 flex items-center space-x-2"><i data-lucide="shopping-cart" class="w-4 h-4 text-slate-400"></i><span>Cart05</span></td>
+                            <td class="p-4"><span class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 flex items-center space-x-2 w-max"><div class="w-2 h-2 rounded-full bg-green-500"></div><span>Operational</span></span></td>
+                            <td class="p-4"><span class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 flex items-center space-x-2 w-max"><div class="w-2 h-2 rounded-full bg-green-500"></div><span>Active</span></span></td>
+                        </tr>
+                        <tr class="modal-cart-row hover:bg-slate-50" data-cart="Cart06" data-scanner="Non-operational" data-display="Inactive">
+                            <td class="p-4 pl-6 font-bold text-slate-800 flex items-center space-x-2"><i data-lucide="shopping-cart" class="w-4 h-4 text-slate-400"></i><span>Cart06</span></td>
+                            <td class="p-4"><span class="px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-700 flex items-center space-x-2 w-max"><div class="w-2 h-2 rounded-full bg-rose-500"></div><span>Non-operational</span></span></td>
+                            <td class="p-4"><span class="px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-700 flex items-center space-x-2 w-max"><div class="w-2 h-2 rounded-full bg-rose-500"></div><span>Inactive</span></span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="bg-slate-50 border-t border-slate-200 p-6 flex justify-between items-center text-sm text-slate-500">
+                <span id="modal-cart-showing-text">Showing 1 to 6 of 6 carts</span>
+                <div class="flex flex-col items-end">
+                    <button id="modal-auto-refresh-btn" onclick="toggleModalAutoRefresh()" class="flex items-center space-x-2 text-emerald-600 hover:text-emerald-700 transition-colors focus:outline-none mb-1">
+                        <i data-lucide="refresh-cw" class="w-4 h-4 animate-spin"></i>
+                        <span class="font-semibold">Auto refresh: ON</span>
+                    </button>
+                    <span class="text-xs text-slate-400">Last updated just now</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
