@@ -1,12 +1,14 @@
-6=#include <WiFi.h>
 #include <Firebase_ESP_Client.h>
+#include <WiFi.h>
 #include <vector>
+
 
 // 1. DATABASE & NETWORK CONFIGURATION
 #define WIFI_SSID "YOUR_WIFI_NAME"
 #define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
 #define API_KEY "AIzaSyDnOqNF8U-uNKDQEZiR0AyMd6JAbFNEIFE"
-#define DATABASE_URL "https://cartpunch-5b2d8-default-rtdb.asia-southeast1.firebasedatabase.app/"
+#define DATABASE_URL                                                           \
+  "https://cartpunch-5b2d8-default-rtdb.asia-southeast1.firebasedatabase.app/"
 
 FirebaseData fbdo;
 FirebaseAuth auth;
@@ -37,22 +39,26 @@ bool sessionActive = false;
 void setup() {
   Serial.begin(115200);
   Serial1.begin(9600, SERIAL_8N1, RXD1_DISPLAY, TXD1_DISPLAY); // Display UI
-  Serial2.begin(9600, SERIAL_8N1, RXD2_SCANNER, TXD2_SCANNER); // Barcode Scanner
+  Serial2.begin(9600, SERIAL_8N1, RXD2_SCANNER,
+                TXD2_SCANNER); // Barcode Scanner
 
   // Connect Wi-Fi
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
-  
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
   // Connect Firebase
   config.api_key = API_KEY;
   config.database_url = DATABASE_URL;
-  config.signer.tokens.legacy_token = ""; 
+  config.signer.tokens.legacy_token = "";
   Firebase.begin(&config, &auth);
   Firebase.reconnectWiFi(true);
 }
 
 // ==========================================
-// 4. HARDWARE INTERFACE LISTENER & API 
+// 4. HARDWARE INTERFACE LISTENER & API
 // ==========================================
 void loop() {
   // A. Listen for UI Commands (e.g., Setting Budget, Updating Qty)
@@ -80,15 +86,13 @@ void processUICommand(String cmd) {
     activeCart.clear();
     currentTotal = 0.0;
     Serial.println("Session Started. Budget: " + String(maxBudget));
-  } 
-  else if (cmd.startsWith("UPDATE_QTY:")) {
+  } else if (cmd.startsWith("UPDATE_QTY:")) {
     // Format: UPDATE_QTY:Barcode:NewQuantity (e.g., UPDATE_QTY:48060262:2)
     int firstColon = cmd.indexOf(':', 11);
     String bCode = cmd.substring(11, firstColon);
     int newQty = cmd.substring(firstColon + 1).toInt();
     updateItemQuantity(bCode, newQty);
-  }
-  else if (cmd == "CHECKOUT") {
+  } else if (cmd == "CHECKOUT") {
     saveTransactionToLedger();
     sessionActive = false;
   }
@@ -104,8 +108,10 @@ void lookupAndProcessItem(String barcode) {
   // Search Firebase for Product
   if (Firebase.ready()) {
     String path = "/products/" + barcode;
-    if (Firebase.RTDB.getString(&fbdo, path + "/name")) itemName = fbdo.stringData();
-    if (Firebase.RTDB.getFloat(&fbdo, path + "/price")) itemPrice = fbdo.floatData();
+    if (Firebase.RTDB.getString(&fbdo, path + "/name"))
+      itemName = fbdo.stringData();
+    if (Firebase.RTDB.getFloat(&fbdo, path + "/price"))
+      itemPrice = fbdo.floatData();
   }
 
   if (itemName != "") {
@@ -127,7 +133,7 @@ void lookupAndProcessItem(String barcode) {
         break;
       }
     }
-    
+
     // If new item, add to array
     if (!found) {
       activeCart.push_back({barcode, itemName, itemPrice, 1});
@@ -142,12 +148,13 @@ void updateItemQuantity(String barcode, int newQty) {
   for (int i = 0; i < activeCart.size(); i++) {
     if (activeCart[i].barcode == barcode) {
       // OVER-BUDGET INTERCEPTOR FOR QTY PAD
-      float priceDifference = (newQty - activeCart[i].quantity) * activeCart[i].price;
+      float priceDifference =
+          (newQty - activeCart[i].quantity) * activeCart[i].price;
       if (currentTotal + priceDifference > maxBudget) {
         sendToDisplay("TRIGGER:LIMIT_REACHED");
         return;
       }
-      
+
       activeCart[i].quantity = newQty;
       if (activeCart[i].quantity <= 0) {
         activeCart.erase(activeCart.begin() + i); // Remove item if Qty is 0
@@ -184,13 +191,16 @@ void saveTransactionToLedger() {
   if (Firebase.ready()) {
     String sessionID = String(millis()); // Generate a simple unique ID
     String path = "/transactions/txn_" + sessionID;
-    
+
     Firebase.RTDB.setFloat(&fbdo, path + "/totalSpent", currentTotal);
     Firebase.RTDB.setFloat(&fbdo, path + "/maxBudget", maxBudget);
-    
+
     for (int i = 0; i < activeCart.size(); i++) {
-      Firebase.RTDB.setString(&fbdo, path + "/items/item_" + String(i) + "/name", activeCart[i].name);
-      Firebase.RTDB.setInt(&fbdo, path + "/items/item_" + String(i) + "/qty", activeCart[i].quantity);
+      Firebase.RTDB.setString(&fbdo,
+                              path + "/items/item_" + String(i) + "/name",
+                              activeCart[i].name);
+      Firebase.RTDB.setInt(&fbdo, path + "/items/item_" + String(i) + "/qty",
+                           activeCart[i].quantity);
     }
     Serial.println("Transaction successfully saved to Firebase Ledger.");
   }

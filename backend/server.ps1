@@ -1,7 +1,7 @@
 $listener = New-Object System.Net.HttpListener
-$listener.Prefixes.Add("http://localhost:8085/")
+$listener.Prefixes.Add("http://localhost:8088/")
 $listener.Start()
-Write-Output "Server running at http://localhost:8085/..."
+Write-Output "Server running at http://localhost:8088/..."
 
 while ($listener.IsListening) {
     try {
@@ -14,6 +14,14 @@ while ($listener.IsListening) {
             $file = "C:\Users\Jayson\OneDrive\Documents\CARTPUNCH\frontend_monitor\Monitor.html"
         } elseif ($path -eq "/Admin" -or $path -eq "/Admin.html") {
             $file = "C:\Users\Jayson\OneDrive\Documents\CARTPUNCH\frontend_admin\Admin.html"
+        } elseif ($path -eq "/Login" -or $path -eq "/Login.html") {
+            $file = "C:\Users\Jayson\OneDrive\Documents\CARTPUNCH\frontend_admin\Login.html"
+        } elseif ($path -eq "/Signup" -or $path -eq "/Signup.html") {
+            $file = "C:\Users\Jayson\OneDrive\Documents\CARTPUNCH\frontend_admin\Signup.html"
+        } elseif ($path -eq "/Verify" -or $path -eq "/Verify.html") {
+            $file = "C:\Users\Jayson\OneDrive\Documents\CARTPUNCH\frontend_admin\Verify.html"
+        } elseif ($path.StartsWith("/scripts")) {
+            $file = Join-Path "C:\Users\Jayson\OneDrive\Documents\CARTPUNCH\frontend_admin" $path.TrimStart('/')
         } else {
             $file = Join-Path "C:\Users\Jayson\OneDrive\Documents\CARTPUNCH" $path.TrimStart('/')
         }

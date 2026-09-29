@@ -1,12 +1,14 @@
 #include <WiFi.h>
 #include <Firebase_ESP_Client.h>
+#include "addons/TokenHelper.h"
+#include "addons/RTDBHelper.h"
 #include <vector>
 
 // 1. DATABASE & NETWORK CONFIGURATION
 #define WIFI_SSID "YOUR_WIFI_NAME"
 #define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
 #define API_KEY "AIzaSyDnOqNF8U-uNKDQEZiR0AyMd6JAbFNEIFE"
-#define DATABASE_URL "https://cartpunch-5b2d8-default-rtdb.asia-southeast1.firebasedatabase.app/"
+#define DATABASE_URL "cartpunch-5b2d8-default-rtdb.asia-southeast1.firebasedatabase.app"
 
 FirebaseData fbdo;
 FirebaseAuth auth;
@@ -47,6 +49,7 @@ void setup() {
   config.api_key = API_KEY;
   config.database_url = DATABASE_URL;
   config.signer.tokens.legacy_token = ""; 
+  config.token_status_callback = tokenStatusCallback; // Enables token status printing
   Firebase.begin(&config, &auth);
   Firebase.reconnectWiFi(true);
 }

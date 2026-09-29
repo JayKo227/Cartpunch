@@ -25,10 +25,13 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-arrows::-webkit-inner-spin-button, .hide-arrows::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .hide-arrows { -moz-appearance: textfield; }
     </style>
 
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -61,7 +64,7 @@
         </div>
 
         <div class="p-6">
-            <button class="flex items-center space-x-2 text-white/90 hover:text-white transition-colors">
+            <button onclick="firebase.auth().signOut()" class="flex items-center space-x-2 text-white/90 hover:text-white transition-colors focus:outline-none">
                 <i data-lucide="log-out" class="w-5 h-5"></i>
                 <span class="font-medium text-sm">Logout</span>
             </button>
@@ -280,7 +283,7 @@
                         </select>
                     </div>
                     <div class="text-sm text-slate-500 font-semibold ml-auto whitespace-nowrap" id="product-count-label">
-                        Showing 0 items
+                        Found 0 items
                     </div>
                 </div>
 
@@ -302,6 +305,18 @@
                             </tr>
                         </tbody>
                     </table>
+                    <div id="pagination-controls" class="hidden bg-slate-50 border-t border-slate-200 p-4 flex justify-between items-center text-xs text-slate-500">
+                        <span id="pagination-info" class="font-bold">Page 1 of 1</span>
+                        <div class="flex items-center space-x-2">
+                            <button id="prev-btn" onclick="prevPage()" class="px-4 py-1.5 bg-white border border-slate-200 rounded text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">Prev</button>
+                            <div class="flex items-center space-x-1 mx-2">
+                                <span class="text-slate-600 font-bold">Page</span>
+                                <input type="number" id="page-input" value="1" min="1" max="99" oninput="if(this.value.length > 2) this.value = this.value.slice(0, 2);" onchange="goToPage(this.value)" class="w-12 px-1 py-1 text-center border border-slate-300 rounded-md text-slate-700 font-bold focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 text-xs hide-arrows bg-white shadow-inner">
+                                <span id="total-pages-indicator" class="text-slate-600 font-bold"></span>
+                            </div>
+                            <button id="next-btn" onclick="nextPage()" class="px-4 py-1.5 bg-brand-500 text-white rounded hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors shadow-sm">Next</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -538,7 +553,16 @@
             appId: "1:520710359414:web:24f13d22d295deb2a0d257"
         };
         firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
         const db = firebase.database();
+
+        // Enforce Authentication
+        auth.onAuthStateChanged(user => {
+            if (!user) {
+                // Not logged in, redirect to login page
+                window.location.href = 'Login.html';
+            }
+        });
 
         let allProducts = [];
         let activityLogs = [];
@@ -627,20 +651,39 @@
             }
         }
 
-        function renderProducts(list) {
+        let currentFilteredProducts = [];
+        let currentPage = 1;
+        const ITEMS_PER_PAGE = 100;
+
+        function getStockStatus(stockNum) {
+            if (stockNum == null || isNaN(stockNum)) return 'High Stock';
+            if (stockNum < 20) return 'Low Stock';
+            if (stockNum < 50) return 'Moderate Stock';
+            return 'High Stock';
+        }
+
+        function renderProducts(list, page = 1) {
+            currentPage = page;
+            currentFilteredProducts = list;
             const tbody = document.getElementById('products-table-body');
-            document.getElementById('product-count-label').innerText = `Showing ${list.length.toLocaleString()} items`;
+            document.getElementById('product-count-label').innerText = `Found ${list.length.toLocaleString()} items`;
+
+            const paginationContainer = document.getElementById('pagination-controls');
 
             if (list.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400 font-medium">No matching products found.</td></tr>`;
+                if (paginationContainer) paginationContainer.classList.add('hidden');
                 return;
             }
 
-            // Limit rendering to 100 for fast UI performance
-            const displayList = list.slice(0, 100);
+            const totalPages = Math.ceil(list.length / ITEMS_PER_PAGE);
+            const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+            const endIndex = startIndex + ITEMS_PER_PAGE;
+            const displayList = list.slice(startIndex, endIndex);
 
             tbody.innerHTML = displayList.map(item => {
                 const safeBarcode = item.barcode.replace(/'/g, "\\'");
+                const stockStatus = getStockStatus(item.stock);
                 return `
                 <tr class="hover:bg-slate-50 transition-colors group">
                     <td class="p-4 pl-6 font-mono font-medium text-slate-500">${item.barcode}</td>
@@ -648,12 +691,12 @@
                     <td class="p-4 font-mono text-slate-700 font-semibold">₱${parseFloat(item.price || 0).toFixed(2)}</td>
                     <td class="p-4">
                         <span class="px-2.5 py-1 rounded-md text-xs font-bold shadow-sm ${
-                            item.stock === 'High Stock' ? 'bg-green-500 text-white border border-green-600' :
-                            item.stock === 'Moderate Stock' ? 'bg-yellow-400 text-yellow-900 border border-yellow-500' :
+                            stockStatus === 'High Stock' ? 'bg-green-500 text-white border border-green-600' :
+                            stockStatus === 'Moderate Stock' ? 'bg-yellow-400 text-yellow-900 border border-yellow-500' :
                             'bg-red-500 text-white border border-red-600'
-                        }">${item.stock || 'High Stock'}</span>
+                        }">${stockStatus}</span>
                     </td>
-                    <td class="p-4 text-right pr-6 space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <td class="p-4 text-right pr-6 space-x-1">
                         <button onclick="editProduct('${safeBarcode}')" class="p-2 text-slate-400 hover:text-brand-500 hover:bg-brand-50 rounded-md transition-all"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
                         <button onclick="deleteProduct('${safeBarcode}')" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                     </td>
@@ -661,6 +704,48 @@
                 `;
             }).join('');
             lucide.createIcons();
+
+            // Update Pagination
+            if (paginationContainer) {
+                paginationContainer.classList.remove('hidden');
+                const pageInput = document.getElementById('page-input');
+                if (pageInput) pageInput.value = currentPage;
+                
+                const totalIndicator = document.getElementById('total-pages-indicator');
+                if (totalIndicator) totalIndicator.innerText = `of ${totalPages}`;
+                
+                document.getElementById('pagination-info').innerText = `Showing ${startIndex + 1} to ${Math.min(endIndex, list.length)} of ${list.length} items`;
+                document.getElementById('prev-btn').disabled = currentPage === 1;
+                document.getElementById('next-btn').disabled = currentPage === totalPages || totalPages === 0;
+            }
+        }
+
+        function goToPage(pageNum) {
+            const totalPages = Math.ceil(currentFilteredProducts.length / ITEMS_PER_PAGE);
+            let page = parseInt(pageNum, 10);
+            if (isNaN(page) || page < 1) page = 1;
+            if (page > totalPages) page = totalPages;
+            
+            // Re-sync input if it was out of bounds
+            const pageInput = document.getElementById('page-input');
+            if (pageInput) pageInput.value = page;
+
+            if (page !== currentPage && page >= 1 && page <= totalPages) {
+                renderProducts(currentFilteredProducts, page);
+            }
+        }
+
+        function nextPage() {
+            const totalPages = Math.ceil(currentFilteredProducts.length / ITEMS_PER_PAGE);
+            if (currentPage < totalPages) {
+                renderProducts(currentFilteredProducts, currentPage + 1);
+            }
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                renderProducts(currentFilteredProducts, currentPage - 1);
+            }
         }
 
         function filterProducts() {
@@ -671,7 +756,8 @@
             // 1. Filter by Search Query & Stock Status
             let filtered = allProducts.filter(p => {
                 const matchesSearch = p.barcode.toLowerCase().includes(query) || p.name.toLowerCase().includes(query);
-                const matchesStock = stockFilter === 'All' || (p.stock || 'High Stock') === stockFilter;
+                const stockStatus = getStockStatus(p.stock);
+                const matchesStock = stockFilter === 'All' || stockStatus === stockFilter;
                 return matchesSearch && matchesStock;
             });
 
@@ -689,7 +775,8 @@
                 return 0; // default (keeps Firebase's default key order)
             });
 
-            renderProducts(filtered);
+            // Reset to page 1 on new filter
+            renderProducts(filtered, 1);
         }
 
         // Navigation Tabs with localStorage persistence
@@ -886,7 +973,7 @@
             <div class="bg-brand-500 text-white p-6 flex justify-between items-center">
                 <h3 class="text-xl font-bold">Display & Scanner Status</h3>
                 <button onclick="closeScannerModal()" class="text-white/80 hover:text-white transition-colors focus:outline-none">
-                    <i data-lucide="x" class="w-6 h-6"></i>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
             </div>
             
