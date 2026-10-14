@@ -198,6 +198,38 @@
             // Navigation history/context for going back
             const [returnScreen, setReturnScreen] = useState(null);
             const [scanOrigin, setScanOrigin] = useState('scanning'); // Tracks where to go on Cancel
+
+            // --- CATEGORY BUDGET STATE ---
+            const CATEGORIES = [
+                { key: 'snacks',     label: 'Snacks',              emoji: '🍿', keywords: ['snack','chip','crisp','popcorn','pretzel'] },
+                { key: 'biscuits',   label: 'Biscuits & Cookies',  emoji: '🍪', keywords: ['biscuit','cookie','crackers','wafer'] },
+                { key: 'meat',       label: 'Meat & Poultry',      emoji: '🥩', keywords: ['meat','beef','pork','chicken','longganisa','tocino','hotdog','sausage'] },
+                { key: 'dairy',      label: 'Dairy & Eggs',        emoji: '🥛', keywords: ['milk','cheese','butter','yogurt','egg','cream'] },
+                { key: 'beverages',  label: 'Beverages',           emoji: '🥤', keywords: ['juice','water','soda','drink','cola','coffee','tea','energy'] },
+                { key: 'bread',      label: 'Bread & Pastry',      emoji: '🍞', keywords: ['bread','pandesal','loaf','bun','roll','cake','muffin','donut'] },
+                { key: 'noodles',    label: 'Noodles & Rice',      emoji: '🍜', keywords: ['noodle','pasta','spaghetti','rice','miki','bihon','sotanghon'] },
+                { key: 'canned',     label: 'Canned Goods',        emoji: '🥫', keywords: ['canned','corned','spam','tuna','sardines','luncheon'] },
+                { key: 'condiments', label: 'Condiments & Spices', emoji: '🧂', keywords: ['sauce','vinegar','soy','ketchup','sugar','salt','pepper','seasoning','oil','mayonnaise'] },
+                { key: 'personal',   label: 'Personal Care',       emoji: '🧴', keywords: ['soap','shampoo','toothpaste','lotion','deodorant','powder','cologne','tissue'] },
+                { key: 'cleaning',   label: 'Cleaning Supplies',   emoji: '🧹', keywords: ['detergent','bleach','fabric','softener','cleaner','dishwash'] },
+                { key: 'others',     label: 'Others',              emoji: '🛒', keywords: [] }
+            ];
+
+            const mkDefaultCatBudgets = () => CATEGORIES.reduce((a,c) => { a[c.key]=''; return a; }, {});
+            const [categoryBudgets, setCategoryBudgets] = useLocalStorageState('cartpunch_monitor_catBudgets', mkDefaultCatBudgets());
+            const [lastScannedCategory, setLastScannedCategory] = useState(null);
+
+            const detectCategory = (productName) => {
+                const lower = (productName||'').toLowerCase();
+                for (const cat of CATEGORIES) {
+                    if (cat.keywords.length > 0 && cat.keywords.some(kw => lower.includes(kw))) return cat;
+                }
+                return CATEGORIES.find(c => c.key === 'others');
+            };
+
+            const getCategorySpent = (catKey) =>
+                cart.filter(item => detectCategory(item.name).key === catKey)
+                    .reduce((sum, item) => sum + (item.price * item.qty), 0);
             
             // --- STATE RECOVERY SAFETY NET ---
             useEffect(() => {
@@ -367,6 +399,10 @@
                 } else {
                     addToCartState(scannedItem, itemQty);
 
+                    // Track which category was just punched
+                    const cat = detectCategory(scannedItem.name);
+                    setLastScannedCategory(cat.key);
+
                     if (budgetMode && newCartTotal >= budget * 0.7 && !hasShown70Warning) {
                         setHasShown70Warning(true);
                         setPopupAlert('warning70');
@@ -407,6 +443,8 @@
                 setHasShown70Warning(false);
                 setPopupAlert(null);
                 setIsQtyPadVisible(false);
+                setCategoryBudgets(mkDefaultCatBudgets());
+                setLastScannedCategory(null);
                 setScreen('splash1');
             };
 
@@ -499,11 +537,11 @@
                         <ShoppingCart size={48} className="text-orange-500" />
                     </div>
                     <h2 className="text-3xl font-bold text-center mb-3 text-gray-800">Set a Budget?</h2>
-                    <p className="text-gray-500 text-center mb-12 text-lg">Would you like to set a maximum budget for your shopping today to track your spending?</p>
+                    <p className="text-gray-500 text-center mb-12 text-lg">Would you like to set a budget per category for your shopping today?</p>
 
                     <div className="w-full space-y-4 max-w-sm">
                         <button
-                            onClick={() => { setBudgetMode(true); setBudgetInputStr(budget > 0 ? budget.toString() : ''); setScreen('budget_input'); }}
+                            onClick={() => { setBudgetMode(true); setScreen('budget_allocate'); }}
                             className="w-full py-5 bg-orange-500 text-white rounded-2xl font-bold text-xl shadow-lg shadow-orange-200 hover:bg-orange-600 transition-colors"
                         >
                             Yes, set a budget
@@ -518,79 +556,90 @@
                 </div>
             );
 
-            // Screen 4 & 11: Budget Input
-            const renderBudgetInput = () => {
-                const budgetNumericKeys = [
-                    ['1', '2', '3'],
-                    ['4', '5', '6'],
-                    ['7', '8', '9'],
-                    ['', '0', 'DEL']
-                ];
+            // Screen 4: Budget Allocation by Category
+            const renderBudgetAllocate = () => {
+                const totalAllocated = CATEGORIES.reduce((sum, cat) => {
+                    const val = parseFloat(categoryBudgets[cat.key] || '0') || 0;
+                    return sum + val;
+                }, 0);
 
-                const handleBudgetKey = (key) => {
-                    if (key === 'DEL') {
-                        setBudgetInputStr(prev => prev.slice(0, -1));
-                    } else if (key !== '') {
-                        if (budgetInputStr.replace('.', '').length >= 9) return;
-                        setBudgetInputStr(prev => prev + key);
-                    }
+                const handleCatInput = (catKey, value) => {
+                    // Only allow numeric with optional dot
+                    const clean = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                    setCategoryBudgets(prev => ({ ...prev, [catKey]: clean }));
+                };
+
+                const handleFinalize = () => {
+                    if (totalAllocated <= 0) return;
+                    setBudget(totalAllocated);
+                    setHasShown70Warning(false);
+                    setScreen('scanning');
                 };
 
                 return (
-                    <div className={`flex flex-col h-full ${defaultTheme.bg}`}>
-                        <div className="p-6 pt-8 shrink-0">
-                            <button onClick={() => screen === 'budget_input' && !returnScreen ? setScreen('budget_prompt') : setScreen(returnScreen || 'scanning')} className="p-3 bg-white rounded-full shadow-sm text-gray-600 border border-orange-50 w-fit">
-                                <ArrowLeft size={28} />
+                    <div className="flex flex-col h-full bg-[#FFF9F5] overflow-hidden">
+                        {/* TOP HEADER — logo + brand */}
+                        <div className="bg-orange-500 pt-10 pb-6 px-8 rounded-b-[2rem] shadow-md shrink-0 flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                                <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center">
+                                    <ScanLine size={26} className="text-white" />
+                                </div>
+                                <h1 className="text-2xl font-black text-white tracking-wide">CartPunch</h1>
+                            </div>
+                            <button onClick={() => setScreen('budget_prompt')} className="p-2.5 bg-white/20 hover:bg-white/30 rounded-full text-white transition-colors">
+                                <ArrowLeft size={22} />
                             </button>
                         </div>
-                        <div className="px-8 flex-1 flex flex-col justify-center pb-8 max-w-lg mx-auto w-full min-h-0">
-                            <h2 className="text-4xl font-bold mb-3 text-gray-800">Max Budget</h2>
-                            <p className="text-gray-500 mb-8 text-lg">Enter the maximum amount you want to spend today.</p>
 
-                            <div className="relative mb-8 shrink-0 flex items-center overflow-hidden rounded-[2rem] bg-white border-2 border-orange-100 focus-within:border-orange-500 shadow-sm transition-all px-6">
-                                <span className="pr-2 text-3xl font-bold text-orange-300">₱</span>
-                                <div className="flex flex-1 items-center overflow-hidden whitespace-nowrap">
-                                    <span className={`text-5xl font-bold py-6 outline-none cursor-default text-gray-800 ${!budgetInputStr ? 'text-gray-300' : ''}`}>
-                                        {budgetInputStr ? formatNumberWithCommas(budgetInputStr) : '0'}
-                                    </span>
-                                    <div className={`w-0.5 h-10 ${defaultTheme.primary} animate-pulse ml-1 transition-colors shrink-0`}></div>
-                                </div>
+                        {/* LOWER HEADER — title + total */}
+                        <div className="px-8 pt-5 pb-3 shrink-0">
+                            <h2 className="text-2xl font-black text-gray-800 mb-0.5">Set Category Budgets</h2>
+                            <p className="text-sm text-gray-500 font-medium">Allocate how much to spend per category. Scroll down to fill in all categories.</p>
+                            <div className="mt-3 flex items-center justify-between bg-white border border-orange-200 rounded-2xl px-5 py-3 shadow-sm">
+                                <span className="text-sm font-bold text-gray-500 uppercase tracking-wider">Total Budget</span>
+                                <span className={`text-2xl font-black ${totalAllocated > 0 ? 'text-orange-500' : 'text-gray-300'}`}>
+                                    ₱{formatNumberWithCommas(totalAllocated.toFixed(2))}
+                                </span>
                             </div>
+                        </div>
 
-                            <div className="flex flex-col space-y-3 max-w-[320px] mx-auto mb-10 w-full shrink-0">
-                                {budgetNumericKeys.map((row, rowIndex) => (
-                                    <div key={rowIndex} className="flex justify-center space-x-3 w-full">
-                                        {row.map((key, kIndex) => (
-                                            key === '' ? (
-                                                <div key={`blank-${kIndex}`} className="flex-1"></div>
-                                            ) : (
-                                                <button
-                                                    key={key}
-                                                    onClick={() => handleBudgetKey(key)}
-                                                    className={`h-16 flex-1 rounded-2xl shadow-[0_2px_0_rgba(0,0,0,0.05)] active:scale-95 active:translate-y-1 transition-all flex items-center justify-center text-2xl font-bold border border-gray-100
-                                ${key === 'DEL' ? 'bg-gray-100 text-gray-700 text-xl' : 'bg-white text-gray-800 hover:bg-orange-50'}`}
-                                                >
-                                                    {key === 'DEL' ? <Delete size={24} /> : key}
-                                                </button>
-                                            )
-                                        ))}
+                        {/* SCROLLABLE CATEGORY ROWS */}
+                        <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-3">
+                            {CATEGORIES.map(cat => {
+                                const val = categoryBudgets[cat.key] || '';
+                                return (
+                                    <div key={cat.key} className="bg-white rounded-2xl border border-orange-100 shadow-sm px-5 py-4 flex items-center space-x-4">
+                                        <span className="text-2xl shrink-0">{cat.emoji}</span>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-bold text-gray-700 truncate">{cat.label}</p>
+                                        </div>
+                                        <div className="flex items-center bg-orange-50 border border-orange-200 rounded-xl px-3 py-2 w-28 shrink-0">
+                                            <span className="text-orange-400 font-bold mr-1 text-sm">₱</span>
+                                            <input
+                                                type="number"
+                                                inputMode="decimal"
+                                                placeholder="0"
+                                                value={val}
+                                                onChange={e => handleCatInput(cat.key, e.target.value)}
+                                                className="w-full bg-transparent text-right text-base font-black text-gray-800 outline-none placeholder-gray-300"
+                                            />
+                                        </div>
                                     </div>
-                                ))}
-                            </div>
+                                );
+                            })}
+                        </div>
 
+                        {/* FINALIZE BUTTON */}
+                        <div className="px-6 pb-6 pt-3 shrink-0 bg-[#FFF9F5] border-t border-orange-100">
                             <button
-                                onClick={() => {
-                                    const num = parseFloat(budgetInputStr);
-                                    if (num > 0) {
-                                        setBudget(num);
-                                        setHasShown70Warning(false);
-                                        setScreen(returnScreen || 'scanning');
-                                        setReturnScreen(null);
-                                    }
-                                }}
-                                className={`w-full py-5 rounded-2xl font-bold text-xl transition-all shrink-0 ${parseFloat(budgetInputStr) > 0 ? 'bg-orange-500 text-white shadow-lg shadow-orange-200 hover:bg-orange-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                                onClick={handleFinalize}
+                                className={`w-full py-5 rounded-2xl font-bold text-xl transition-all shadow-lg ${
+                                    totalAllocated > 0
+                                        ? 'bg-orange-500 text-white shadow-orange-200 hover:bg-orange-600'
+                                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                }`}
                             >
-                                Confirm Budget
+                                Finalize Budget — ₱{formatNumberWithCommas(totalAllocated.toFixed(2))}
                             </button>
                         </div>
                     </div>
@@ -613,8 +662,7 @@
                                 <button
                                     onClick={() => {
                                         setReturnScreen(screen);
-                                        setBudgetInputStr(budget.toString());
-                                        setScreen('budget_input');
+                                        setScreen('budget_allocate');
                                     }}
                                     title="Edit Budget"
                                     className={`p-1 rounded-md bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors`}
@@ -629,50 +677,146 @@
             );
 
             // Screen 5 & 7: Scanning Idle
-            const renderScanning = () => (
-                <div className={`flex flex-col h-full ${theme.bg} relative transition-colors duration-500`}>
-                    <TopHeader />
+            const renderScanning = () => {
+                // Categories that have a budget allocated
+                const allocatedCats = CATEGORIES.filter(cat => {
+                    const alloc = parseFloat(categoryBudgets[cat.key] || '0') || 0;
+                    return alloc > 0;
+                });
 
-                    <div className="flex-1 flex flex-col items-center justify-center p-8">
-                        <div
-                            onClick={handleSimulateScan}
-                            className={`w-full max-w-[340px] aspect-square rounded-[3rem] border-4 border-dashed ${theme.borderHighlight} flex flex-col items-center justify-center bg-white shadow-sm relative overflow-hidden cursor-pointer ${theme.hoverBorder} transition-colors group animate-float-up`}
-                        >
-                            <div className={`absolute top-0 left-0 w-full h-1.5 ${theme.laserBg} opacity-75 ${theme.laserShadow} animate-[scan_2s_ease-in-out_infinite] transition-colors`}></div>
-                            <Barcode size={100} className={`text-gray-300 ${theme.hoverText} transition-colors mb-6 animate-pulse`} />
-                            <p className="text-gray-600 font-bold text-2xl text-center px-4 leading-tight">Waiting for the item to be Scan</p>
+                // Build display: if lastScannedCategory exists, show it highlighted first, then rest
+                const activeCat = lastScannedCategory
+                    ? CATEGORIES.find(c => c.key === lastScannedCategory)
+                    : null;
+
+                return (
+                    <div className={`flex flex-col h-full ${theme.bg} relative transition-colors duration-500`}>
+                        <TopHeader />
+
+                        <div className="flex-1 flex flex-col items-center p-6 gap-4 overflow-hidden">
+                            {/* Scan Area — compact when budgetMode is on */}
+                            <div
+                                onClick={handleSimulateScan}
+                                className={`w-full rounded-[2.5rem] border-4 border-dashed ${theme.borderHighlight} flex flex-col items-center justify-center bg-white shadow-sm relative overflow-hidden cursor-pointer ${theme.hoverBorder} transition-colors group ${budgetMode ? 'h-[140px]' : 'flex-1 max-w-[340px] aspect-square animate-float-up'}`}
+                            >
+                                <div className={`absolute top-0 left-0 w-full h-1.5 ${theme.laserBg} opacity-75 ${theme.laserShadow} animate-[scan_2s_ease-in-out_infinite] transition-colors`}></div>
+                                <Barcode size={budgetMode ? 44 : 100} className={`text-gray-300 ${theme.hoverText} transition-colors ${budgetMode ? 'mb-2' : 'mb-6'} animate-pulse`} />
+                                <p className={`text-gray-600 font-bold text-center px-4 leading-tight ${budgetMode ? 'text-base' : 'text-2xl'}`}>Waiting for item to be Scanned</p>
+                            </div>
+
+                            {/* Category Budget Tracker — only when budget mode on & categories set */}
+                            {budgetMode && allocatedCats.length > 0 && (
+                                <div className="w-full flex-1 overflow-hidden flex flex-col min-h-0">
+                                    <div className="flex items-center justify-between mb-2 shrink-0">
+                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Category Tracker</p>
+                                        {activeCat && (
+                                            <span className={`text-xs font-bold px-2.5 py-1 rounded-full bg-orange-100 text-orange-600`}>
+                                                Last: {activeCat.emoji} {activeCat.label}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="overflow-y-auto hide-scrollbar space-y-2 flex-1">
+                                        {/* Highlight last scanned category first */}
+                                        {activeCat && (() => {
+                                            const alloc = parseFloat(categoryBudgets[activeCat.key] || '0') || 0;
+                                            const spent = getCategorySpent(activeCat.key);
+                                            const remaining = alloc - spent;
+                                            const pct = alloc > 0 ? Math.min(spent / alloc, 1) : 0;
+                                            const isOver = remaining < 0;
+                                            return (
+                                                <div className={`bg-orange-500 rounded-2xl px-4 py-3 text-white shadow-md shadow-orange-200`}>
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <div className="flex items-center space-x-2">
+                                                            <span className="text-xl">{activeCat.emoji}</span>
+                                                            <span className="text-sm font-black">{activeCat.label}</span>
+                                                        </div>
+                                                        <span className={`text-sm font-black ${isOver ? 'text-red-200' : 'text-white'}`}>
+                                                            ₱{formatNumberWithCommas(remaining.toFixed(2))} left
+                                                        </span>
+                                                    </div>
+                                                    {alloc > 0 && (
+                                                        <div className="bg-white/20 rounded-full h-1.5 overflow-hidden">
+                                                            <div className={`h-full rounded-full transition-all duration-500 ${isOver ? 'bg-red-300' : 'bg-white'}`} style={{ width: `${pct * 100}%` }}></div>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex justify-between text-xs text-white/70 mt-1">
+                                                        <span>Spent: ₱{formatNumberWithCommas(spent.toFixed(2))}</span>
+                                                        {alloc > 0 && <span>Budget: ₱{formatNumberWithCommas(alloc.toFixed(2))}</span>}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+                                        {/* Other allocated categories */}
+                                        {allocatedCats.filter(cat => cat.key !== (activeCat ? activeCat.key : null)).map(cat => {
+                                            const alloc = parseFloat(categoryBudgets[cat.key] || '0') || 0;
+                                            const spent = getCategorySpent(cat.key);
+                                            const remaining = alloc - spent;
+                                            const pct = alloc > 0 ? Math.min(spent / alloc, 1) : 0;
+                                            const isOver = remaining < 0;
+                                            return (
+                                                <div key={cat.key} className="bg-white rounded-2xl border border-orange-100 shadow-sm px-4 py-3">
+                                                    <div className="flex items-center justify-between mb-1.5">
+                                                        <div className="flex items-center space-x-2">
+                                                            <span className="text-lg">{cat.emoji}</span>
+                                                            <span className="text-sm font-bold text-gray-700">{cat.label}</span>
+                                                        </div>
+                                                        <span className={`text-sm font-black ${isOver ? 'text-red-500' : 'text-orange-500'}`}>
+                                                            ₱{formatNumberWithCommas(remaining.toFixed(2))}
+                                                        </span>
+                                                    </div>
+                                                    {alloc > 0 && (
+                                                        <div className="bg-orange-100 rounded-full h-1.5 overflow-hidden">
+                                                            <div className={`h-full rounded-full transition-all duration-500 ${isOver ? 'bg-red-400' : 'bg-orange-400'}`} style={{ width: `${pct * 100}%` }}></div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Manual input button — when no budget mode show below scan area */}
+                            {!budgetMode && (
+                                <button
+                                    onClick={() => { setScreen('manual_input'); setIsKeyboardVisible(true); setManualInputValue(''); }}
+                                    className={`mt-4 flex items-center space-x-3 bg-white border border-gray-200 text-gray-700 px-8 py-4 rounded-full font-bold text-lg hover:${theme.softBg} ${theme.hoverText} hover:${theme.borderHighlight} shadow-sm transition-all shrink-0`}
+                                >
+                                    <Keyboard size={24} />
+                                    <span>Manual Input</span>
+                                </button>
+                            )}
                         </div>
 
-                        <button
-                            onClick={() => {
-                                setScreen('manual_input');
-                                setIsKeyboardVisible(true);
-                                setManualInputValue('');
-                            }}
-                            className={`mt-12 flex items-center space-x-3 bg-white border border-gray-200 text-gray-700 px-8 py-4 rounded-full font-bold text-lg hover:${theme.softBg} ${theme.hoverText} hover:${theme.borderHighlight} shadow-sm transition-all`}
-                        >
-                            <Keyboard size={24} />
-                            <span>Manual Input</span>
-                        </button>
+                        <div className={`bg-white px-6 py-5 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)] border-t ${theme.border} relative z-10 transition-colors`}>
+                            {budgetMode && (
+                                <button
+                                    onClick={() => { setScreen('manual_input'); setIsKeyboardVisible(true); setManualInputValue(''); }}
+                                    className={`w-full mb-3 flex items-center justify-center space-x-2 bg-white border border-gray-200 text-gray-600 py-3 rounded-2xl font-bold text-base hover:bg-gray-50 transition-all`}
+                                >
+                                    <Keyboard size={20} />
+                                    <span>Manual Input</span>
+                                </button>
+                            )}
+                            <div className="flex space-x-3">
+                                <button
+                                    onClick={() => setScreen('cart')}
+                                    className={`flex-1 py-4 ${theme.softBg} ${theme.textValue} rounded-2xl font-bold text-base flex items-center justify-center space-x-2 ${theme.hoverBorder} transition-colors border ${theme.borderHighlight}`}
+                                >
+                                    <ShoppingCart size={22} />
+                                    <span>Cart ({cart.length})</span>
+                                </button>
+                                <button
+                                    onClick={() => cart.length > 0 && setScreen('checkout')}
+                                    className={`flex-1 py-4 ${theme.primary} text-white rounded-2xl font-bold text-lg shadow-lg ${theme.shadow} ${theme.primaryHover} transition-colors ${cart.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                >
+                                    Finish Up
+                                </button>
+                            </div>
+                        </div>
                     </div>
-
-                    <div className={`bg-white p-8 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)] flex justify-between space-x-4 border-t ${theme.border} relative z-10 transition-colors`}>
-                        <button
-                            onClick={() => setScreen('cart')}
-                            className={`flex-1 py-5 ${theme.softBg} ${theme.textValue} rounded-2xl font-bold text-lg flex items-center justify-center space-x-2 ${theme.hoverBorder} transition-colors border ${theme.borderHighlight}`}
-                        >
-                            <ShoppingCart size={24} />
-                            <span>View Cart ({cart.length})</span>
-                        </button>
-                        <button
-                            onClick={() => cart.length > 0 && setScreen('checkout')}
-                            className={`flex-1 py-5 ${theme.primary} text-white rounded-2xl font-bold text-xl shadow-lg ${theme.shadow} ${theme.primaryHover} transition-colors ${cart.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                            Finish Up
-                        </button>
-                    </div>
-                </div>
-            );
+                );
+            };
 
             // Screen 13: Manual Input with Custom Keyboard
             const renderManualInput = () => {
@@ -1213,7 +1357,7 @@
                         {screen === 'splash1' && renderSplash1()}
                         {screen === 'tutorial' && renderTutorial()}
                         {screen === 'budget_prompt' && renderBudgetPrompt()}
-                        {screen === 'budget_input' && renderBudgetInput()}
+                        {screen === 'budget_allocate' && renderBudgetAllocate()}
                         {screen === 'scanning' && renderScanning()}
                         {screen === 'manual_input' && renderManualInput()}
                         {screen === 'item_scanned' && renderItemScanned()}

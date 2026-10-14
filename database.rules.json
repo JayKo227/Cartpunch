@@ -1,6 +1,18 @@
 {
   "rules": {
-    ".read": true,
-    ".write": true
+    ".read": false,
+    ".write": false,
+    "products": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "transactions": {
+      ".read": "auth != null",
+      ".write": true
+    },
+    "carts": {
+      ".read": true,
+      ".write": true
+    }
   }
 }
