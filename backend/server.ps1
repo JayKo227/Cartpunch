@@ -1,9 +1,13 @@
+$rootDir = Split-Path -Parent $PSScriptRoot
+$adminDir = Join-Path $rootDir "frontend_admin"
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add("http://localhost:8088/")
 $listener.Start()
 Write-Output "Server running at http://localhost:8088/..."
 
 while ($listener.IsListening) {
+    $context = $null
+    $response = $null
     try {
         $context = $listener.GetContext()
         $request = $context.Request
@@ -11,21 +15,30 @@ while ($listener.IsListening) {
 
         $path = $request.Url.AbsolutePath
         if ($path -eq "/" -or $path -eq "/Monitor" -or $path -eq "/Monitor.html") {
-            $file = "C:\Users\Jayson\OneDrive\Documents\CARTPUNCH\frontend_monitor\Monitor.html"
+            $file = Join-Path $rootDir "frontend_monitor\Monitor.html"
         } elseif ($path -eq "/Admin" -or $path -eq "/Admin.html") {
-            $file = "C:\Users\Jayson\OneDrive\Documents\CARTPUNCH\frontend_admin\Admin.html"
+            $file = Join-Path $adminDir "Admin.html"
         } elseif ($path -eq "/Login" -or $path -eq "/Login.html") {
-            $file = "C:\Users\Jayson\OneDrive\Documents\CARTPUNCH\frontend_admin\Login.html"
+            $file = Join-Path $adminDir "Login.html"
         } elseif ($path -eq "/Signup" -or $path -eq "/Signup.html") {
-            $file = "C:\Users\Jayson\OneDrive\Documents\CARTPUNCH\frontend_admin\Signup.html"
+            $file = Join-Path $adminDir "Signup.html"
+        } elseif ($path -eq "/PendingApproval" -or $path -eq "/PendingApproval.html") {
+            $file = Join-Path $adminDir "PendingApproval.html"
+        } elseif ($path -eq "/ApproveAdmin" -or $path -eq "/ApproveAdmin.html") {
+            $file = Join-Path $adminDir "ApproveAdmin.html"
         } elseif ($path -eq "/Verify" -or $path -eq "/Verify.html") {
-            $file = "C:\Users\Jayson\OneDrive\Documents\CARTPUNCH\frontend_admin\Verify.html"
-        } elseif ($path.StartsWith("/scripts")) {
-            $file = Join-Path "C:\Users\Jayson\OneDrive\Documents\CARTPUNCH\frontend_admin" $path.TrimStart('/')
+            $file = Join-Path $adminDir "Verify.html"
+        } elseif ($path.StartsWith("/scripts/")) {
+            $file = Join-Path $adminDir $path.TrimStart('/').Replace('/', '\')
         } else {
-            $file = Join-Path "C:\Users\Jayson\OneDrive\Documents\CARTPUNCH" $path.TrimStart('/')
+            $adminCandidate = Join-Path $adminDir $path.TrimStart('/').Replace('/', '\')
+            if (Test-Path $adminCandidate -PathType Leaf) {
+                $file = $adminCandidate
+            } else {
+                $file = Join-Path $rootDir $path.TrimStart('/').Replace('/', '\')
+            }
         }
-        
+
         if (Test-Path $file -PathType Leaf) {
             $bytes = [System.IO.File]::ReadAllBytes($file)
             if ($file.EndsWith(".html")) { $response.ContentType = "text/html" }
@@ -38,6 +51,13 @@ while ($listener.IsListening) {
         }
         $response.Close()
     } catch {
-        # ignore error on close
+        Write-Error "Request handling failed: $($_.Exception.Message)"
+        if ($response) {
+            try {
+                $response.Close()
+            } catch {
+                Write-Error "Could not close the response: $($_.Exception.Message)"
+            }
+        }
     }
 }

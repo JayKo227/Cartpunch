@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CartPunch Admin Approval</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 500: '#ef6c00', 600: '#e65100' },
+                        surface: '#f8fafc'
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="bg-surface h-screen flex items-center justify-center p-4 text-slate-800">
+
+    <div class="w-full max-w-md p-8 bg-white rounded-2xl shadow-xl border border-slate-100 text-center space-y-4">
+        <div id="icon-wrap"
+            class="w-16 h-16 mx-auto bg-brand-50 text-brand-500 rounded-2xl flex items-center justify-center">
+            <i data-lucide="loader-2" class="w-8 h-8 animate-spin"></i>
+        </div>
+        <h1 id="title" class="text-xl font-extrabold text-slate-800">Checking Request...</h1>
+        <p id="message" class="text-sm text-slate-500">Checking Main Admin access and request status.</p>
+        <div id="request-details" class="hidden rounded-lg bg-slate-50 p-4 text-left text-sm text-slate-600 space-y-1">
+            <p><strong>Name:</strong> <span id="request-name"></span></p>
+            <p><strong>Email:</strong> <span id="request-email"></span></p>
+            <p><strong>Position:</strong> <span id="request-position"></span></p>
+            <p><strong>Department:</strong> <span id="request-department"></span></p>
+        </div>
+        <a id="login-link" href="Login.html"
+            class="hidden w-full py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow-md transition-all inline-block">
+            Sign in as Main Admin
+        </a>
+        <button id="confirm-action"
+            class="hidden w-full py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow-md transition-all">
+            Confirm
+        </button>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDnOqNF8U-uNKDQEZiR0AyMd6JAbFNEIFE",
+            authDomain: "cartpunch-5b2d8.firebaseapp.com",
+            databaseURL: "https://cartpunch-5b2d8-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "cartpunch-5b2d8",
+            storageBucket: "cartpunch-5b2d8.firebasestorage.app",
+            messagingSenderId: "520710359414",
+            appId: "1:520710359414:web:24f13d22d295deb2a0d257"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+        const MAIN_ADMIN_EMAIL = "cartpunch.security@gmail.com";
+        const params = new URLSearchParams(window.location.search);
+        const reqId = params.get('req');
+        const action = params.get('action');
+        let requestRef = null;
+        let requestData = null;
+
+        function renderResult(type, titleText, msgText) {
+            const iconWrap = document.getElementById('icon-wrap');
+            if (type === 'success') {
+                iconWrap.className = 'w-16 h-16 mx-auto bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center';
+                iconWrap.innerHTML = '<i data-lucide="check-circle" class="w-8 h-8"></i>';
+            } else {
+                iconWrap.className = 'w-16 h-16 mx-auto bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center';
+                iconWrap.innerHTML = '<i data-lucide="x-circle" class="w-8 h-8"></i>';
+            }
+            document.getElementById('title').innerText = titleText;
+            document.getElementById('message').innerText = msgText;
+            lucide.createIcons();
+        }
+
+        function showLoginLink() {
+            document.getElementById('login-link').classList.remove('hidden');
+        }
+
+        async function confirmAction() {
+            const button = document.getElementById('confirm-action');
+            button.disabled = true;
+            try {
+                const status = action === 'approve' ? 'approved' : 'rejected';
+                const now = Date.now();
+                const updates = {};
+                updates[`pending_admin_requests/${reqId}/status`] = status;
+                updates[`pending_admin_requests/${reqId}/${action === 'approve' ? 'approvedAt' : 'resolvedAt'}`] = now;
+                updates[`pending_admin_requests/${reqId}/resolvedBy`] = MAIN_ADMIN_EMAIL;
+                updates[`pending_admin_requests/${reqId}/password`] = null;
+                updates[`pending_admin_status/${reqId}/status`] = status;
+                updates[`pending_admin_status/${reqId}/resolvedAt`] = now;
+                await db.ref().update(updates);
+                renderResult(
+                    status === 'approved' ? 'success' : 'error',
+                    status === 'approved' ? 'Request Approved' : 'Request Rejected',
+                    `${requestData.name} (${requestData.email}) was ${status} by ${MAIN_ADMIN_EMAIL}.`
+                );
+            } catch (err) {
+                console.error(err);
+                renderResult('error', 'Approval Failed', 'Could not update this request: ' + err.message);
+            }
+        }
+
+        async function loadRequest(user) {
+            if (!user || user.email !== MAIN_ADMIN_EMAIL) {
+                renderResult('error', 'Main Admin Sign-In Required', 'Sign in with the authorized Main Admin account, then reopen this approval link.');
+                showLoginLink();
+                return;
+            }
+
+            document.getElementById('login-link').classList.add('hidden');
+            try {
+                requestRef = db.ref(`pending_admin_requests/${reqId}`);
+                const snap = await requestRef.once('value');
+                requestData = snap.val();
+                if (!requestData) {
+                    return renderResult('error', 'Request Not Found', 'This sign-up request does not exist.');
+                }
+                if (requestData.status !== 'pending') {
+                    return renderResult('error', 'Already Processed', `This request was already marked as "${requestData.status}".`);
+                }
+                if (Date.now() >= requestData.expiresAt) {
+                    const updates = {};
+                    updates[`pending_admin_requests/${reqId}/status`] = 'expired';
+                    updates[`pending_admin_requests/${reqId}/resolvedAt`] = Date.now();
+                    updates[`pending_admin_requests/${reqId}/password`] = null;
+                    updates[`pending_admin_status/${reqId}/status`] = 'expired';
+                    updates[`pending_admin_status/${reqId}/resolvedAt`] = Date.now();
+                    await db.ref().update(updates);
+                    return renderResult('error', 'Link Expired', 'This approval request expired after 5 minutes.');
+                }
+
+                document.getElementById('request-name').textContent = requestData.name;
+                document.getElementById('request-email').textContent = requestData.email;
+                document.getElementById('request-position').textContent = requestData.position;
+                document.getElementById('request-department').textContent = requestData.department;
+                document.getElementById('request-details').classList.remove('hidden');
+                document.getElementById('message').textContent = 'Review the applicant details, then confirm your decision.';
+                const button = document.getElementById('confirm-action');
+                button.textContent = action === 'approve' ? 'Confirm Approval' : 'Confirm Rejection';
+                button.classList.remove('hidden');
+                button.addEventListener('click', confirmAction, { once: true });
+                document.getElementById('title').textContent = action === 'approve' ? 'Approve Admin Request?' : 'Reject Admin Request?';
+            } catch (err) {
+                console.error(err);
+                renderResult('error', 'Approval Failed', 'Could not read request details: ' + err.message);
+            }
+        }
+
+        if (!reqId || !/^[A-Za-z0-9_-]+$/.test(reqId) || !['approve', 'reject'].includes(action)) {
+            renderResult('error', 'Invalid Approval Link', 'Missing or malformed request parameters.');
+        } else {
+            auth.onAuthStateChanged(loadRequest);
+        }
+    </script>
+</body>
+
+</html>

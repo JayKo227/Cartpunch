@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create CartPunch Admin Account</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+
+<body class="bg-slate-50 min-h-screen flex items-center justify-center p-4 text-slate-800">
+    <main class="w-full max-w-md p-8 bg-white rounded-2xl shadow-xl border border-slate-100 space-y-5">
+        <div class="text-center">
+            <div class="w-14 h-14 mx-auto bg-orange-600 rounded-2xl flex items-center justify-center text-white mb-3">
+                <i data-lucide="user-plus" class="w-7 h-7"></i>
+            </div>
+            <h1 class="text-2xl font-extrabold">Create Admin Account</h1>
+            <p class="text-sm text-slate-500 mt-1">Use the same email address you submitted for approval.</p>
+        </div>
+
+        <div id="message" class="hidden rounded-lg p-3 text-sm" role="status"></div>
+        <form id="account-form" class="space-y-4">
+            <label class="block text-sm font-semibold">
+                Email
+                <input id="email" type="email" required autocomplete="email"
+                    class="mt-1 w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg">
+            </label>
+            <label class="block text-sm font-semibold">
+                Password
+                <input id="password" type="password" required minlength="8" autocomplete="new-password"
+                    class="mt-1 w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg">
+                <span class="block mt-1 text-xs font-normal text-slate-500">At least 8 characters, including a letter, number, and symbol.</span>
+            </label>
+            <label class="block text-sm font-semibold">
+                Confirm password
+                <input id="confirm-password" type="password" required minlength="8" autocomplete="new-password"
+                    class="mt-1 w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg">
+            </label>
+            <button id="submit-button" type="submit"
+                class="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-lg">
+                Create Account
+            </button>
+        </form>
+        <a id="login-link" class="hidden block text-center text-sm font-bold text-orange-700 underline" href="Login.html">
+            Continue to Admin Login
+        </a>
+    </main>
+
+    <script>
+        lucide.createIcons();
+        const firebaseConfig = {
+            apiKey: "AIzaSyDnOqNF8U-uNKDQEZiR0AyMd6JAbFNEIFE",
+            authDomain: "cartpunch-5b2d8.firebaseapp.com",
+            databaseURL: "https://cartpunch-5b2d8-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "cartpunch-5b2d8",
+            storageBucket: "cartpunch-5b2d8.firebasestorage.app",
+            messagingSenderId: "520710359414",
+            appId: "1:520710359414:web:24f13d22d295deb2a0d257"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+        const params = new URLSearchParams(window.location.search);
+        const reqId = params.get('req');
+        const message = document.getElementById('message');
+        const submitButton = document.getElementById('submit-button');
+        let provisioning = false;
+
+        function showMessage(text, isError) {
+            message.textContent = text;
+            message.className = `rounded-lg p-3 text-sm ${isError ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`;
+            message.classList.remove('hidden');
+        }
+
+        function passwordIsStrong(password) {
+            return password.length >= 8 && /[A-Za-z]/.test(password) &&
+                /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
+        }
+
+        async function provisionVerifiedAccount(user) {
+            if (provisioning || !user || !user.emailVerified || !user.email || !reqId) return;
+            provisioning = true;
+            try {
+                await user.getIdToken(true);
+                const requestSnapshot = await db.ref(`pending_admin_requests/${reqId}`).once('value');
+                const request = requestSnapshot.val();
+                if (!request || request.status !== 'approved' ||
+                    request.email.toLowerCase() !== user.email.toLowerCase()) {
+                    throw new Error('This approved request does not match the verified email address.');
+                }
+
+                await db.ref(`admins/${user.uid}`).set({
+                    requestId: reqId,
+                    name: request.name,
+                    position: request.position,
+                    department: request.department,
+                    email: user.email,
+                    role: 'admin',
+                    approvedBy: request.resolvedBy || 'Main Admin',
+                    approvedAt: request.approvedAt
+                });
+                document.getElementById('account-form').classList.add('hidden');
+                document.getElementById('login-link').classList.remove('hidden');
+                showMessage('Email verified and admin account created.', false);
+            } catch (error) {
+                console.error(error);
+                showMessage('Could not finish account setup: ' + error.message, true);
+            } finally {
+                provisioning = false;
+                if (!document.getElementById('account-form').classList.contains('hidden')) {
+                    submitButton.disabled = false;
+                }
+            }
+        }
+
+        auth.onAuthStateChanged(async (user) => {
+            if (!user) return;
+            try {
+                await user.reload();
+                const refreshedUser = auth.currentUser;
+                if (refreshedUser && refreshedUser.emailVerified) {
+                    await provisionVerifiedAccount(refreshedUser);
+                } else {
+                    showMessage('Verify your email using the link we sent, then return to this page.', false);
+                }
+            } catch (error) {
+                console.error(error);
+                showMessage('Could not check email verification: ' + error.message, true);
+            }
+        });
+
+        document.getElementById('account-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (!reqId || !/^[A-Za-z0-9_-]+$/.test(reqId)) {
+                return showMessage('The approval link is missing or invalid. Return to your approval status page.', true);
+            }
+
+            const email = document.getElementById('email').value.trim().toLowerCase();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            if (!passwordIsStrong(password)) {
+                return showMessage('Password must be at least 8 characters with a letter, number, and symbol.', true);
+            }
+            if (password !== confirmPassword) {
+                return showMessage('Passwords do not match.', true);
+            }
+
+            submitButton.disabled = true;
+            try {
+                let user = auth.currentUser;
+                if (user && user.email.toLowerCase() !== email) {
+                    await auth.signOut();
+                    user = null;
+                }
+                if (!user) {
+                    try {
+                        const credential = await auth.createUserWithEmailAndPassword(email, password);
+                        user = credential.user;
+                    } catch (error) {
+                        if (error.code !== 'auth/email-already-in-use') throw error;
+                        const credential = await auth.signInWithEmailAndPassword(email, password);
+                        user = credential.user;
+                    }
+                }
+
+                if (user.email.toLowerCase() !== email) {
+                    throw new Error('Sign in with the email address from the approved request.');
+                }
+                if (!user.emailVerified) {
+                    const continueUrl = new URL(`CreateAccount.html?req=${encodeURIComponent(reqId)}`, window.location.href).href;
+                    await user.sendEmailVerification({ url: continueUrl });
+                    document.getElementById('account-form').classList.add('hidden');
+                    showMessage('Check your email and verify the address. Reopen this page after verification to finish setup.', false);
+                } else {
+                    await provisionVerifiedAccount(user);
+                }
+            } catch (error) {
+                console.error(error);
+                showMessage('Could not create the account: ' + error.message, true);
+                submitButton.disabled = false;
+            }
+        });
+    </script>
+</body>
+
+</html>

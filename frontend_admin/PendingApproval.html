@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Awaiting Main Admin Approval</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 500: '#ef6c00', 600: '#e65100' },
+                        surface: '#f8fafc'
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="bg-surface h-screen flex items-center justify-center p-4 text-slate-800">
+
+    <div class="w-full max-w-md p-8 bg-white rounded-2xl shadow-xl border border-slate-100 text-center space-y-5">
+        <div id="status-icon"
+            class="w-16 h-16 mx-auto bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center">
+            <i data-lucide="clock" class="w-8 h-8 animate-pulse"></i>
+        </div>
+
+        <h1 id="status-title" class="text-2xl font-extrabold text-slate-800">Waiting for Main Admin Approval</h1>
+        <p id="status-desc" class="text-sm text-slate-500">
+            An approval request has been emailed to the Main Admin. Please keep this page open while they confirm.
+        </p>
+
+        <div id="timer-box" class="bg-amber-50 border border-amber-200 rounded-xl py-3 px-4">
+            <p class="text-xs font-bold uppercase tracking-wider text-amber-700">Time Remaining</p>
+            <p id="countdown" class="text-2xl font-extrabold text-amber-800 mt-0.5">05:00</p>
+        </div>
+
+        <a id="action-link" href="Login.html"
+            class="hidden w-full py-3.5 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow-md transition-all inline-block">
+            Proceed to Admin Login
+        </a>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDnOqNF8U-uNKDQEZiR0AyMd6JAbFNEIFE",
+            authDomain: "cartpunch-5b2d8.firebaseapp.com",
+            databaseURL: "https://cartpunch-5b2d8-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "cartpunch-5b2d8",
+            storageBucket: "cartpunch-5b2d8.firebasestorage.app",
+            messagingSenderId: "520710359414",
+            appId: "1:520710359414:web:24f13d22d295deb2a0d257"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const params = new URLSearchParams(window.location.search);
+        const reqId = params.get('req');
+        let timerInterval = null;
+
+        if (!reqId) {
+            window.location.replace('Signup.html');
+        } else {
+            const statusRef = db.ref(`pending_admin_status/${reqId}`);
+
+            function showTerminalState({ iconClass, iconName, title, desc, btnText, btnHref }) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                const iconEl = document.getElementById('status-icon');
+                iconEl.className = `w-16 h-16 mx-auto ${iconClass} rounded-2xl flex items-center justify-center`;
+                iconEl.innerHTML = `<i data-lucide="${iconName}" class="w-8 h-8"></i>`;
+                document.getElementById('status-title').innerText = title;
+                document.getElementById('status-desc').innerText = desc;
+                document.getElementById('timer-box').classList.add('hidden');
+                const link = document.getElementById('action-link');
+                link.innerText = btnText;
+                link.href = btnHref;
+                link.classList.remove('hidden');
+                lucide.createIcons();
+            }
+
+            function showExpiredState() {
+                showTerminalState({
+                    iconClass: 'bg-slate-100 text-slate-500',
+                    iconName: 'timer-off',
+                    title: 'Approval Expired',
+                    desc: 'The 5-minute approval window has expired. Please submit a new sign-up request.',
+                    btnText: 'Try Again',
+                    btnHref: 'Signup.html'
+                });
+            }
+
+            statusRef.on('value', (snap) => {
+                const data = snap.val();
+                if (!data || typeof data !== 'object') {
+                    showTerminalState({
+                        iconClass: 'bg-rose-100 text-rose-600',
+                        iconName: 'alert-circle',
+                        title: 'Request Not Found',
+                        desc: 'This sign-up request no longer exists. Please submit a new sign-up request.',
+                        btnText: 'Back to Sign Up',
+                        btnHref: 'Signup.html'
+                    });
+                    return;
+                }
+
+                if (data.status === 'approved') {
+                    showTerminalState({
+                        iconClass: 'bg-emerald-100 text-emerald-600',
+                        iconName: 'check-circle',
+                        title: 'Request Approved!',
+                        desc: 'Your request was approved. Create your account to continue.',
+                        btnText: 'Create Account',
+                        btnHref: `CreateAccount.html?req=${encodeURIComponent(reqId)}`
+                    });
+                } else if (data.status === 'rejected') {
+                    showTerminalState({
+                        iconClass: 'bg-rose-100 text-rose-600',
+                        iconName: 'x-circle',
+                        title: 'Request Declined',
+                        desc: 'The Main Admin declined this sign-up request.',
+                        btnText: 'Back to Sign Up',
+                        btnHref: 'Signup.html'
+                    });
+                } else if (data.status === 'expired' || Date.now() >= data.expiresAt) {
+                    showExpiredState();
+                } else if (data.status === 'pending' && !timerInterval) {
+                    const tick = () => {
+                        const remaining = data.expiresAt - Date.now();
+                        if (remaining <= 0) {
+                            clearInterval(timerInterval);
+                            timerInterval = null;
+                            showExpiredState();
+                        } else {
+                            const mins = String(Math.floor(remaining / 60000)).padStart(2, '0');
+                            const secs = String(Math.floor((remaining % 60000) / 1000)).padStart(2, '0');
+                            document.getElementById('countdown').innerText = `${mins}:${secs}`;
+                        }
+                    };
+                    tick();
+                    if (data.expiresAt - Date.now() > 0) {
+                        timerInterval = setInterval(tick, 1000);
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

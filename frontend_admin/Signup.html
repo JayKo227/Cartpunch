@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CartPunch Admin Sign Up</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            500: '#ef6c00',
+                            600: '#e65100',
+                        },
+                        surface: '#f8fafc',
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <!-- EmailJS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="bg-surface min-h-screen flex items-center justify-center py-8 px-4 text-slate-800">
+
+    <div class="w-full max-w-lg p-8 bg-white rounded-2xl shadow-xl border border-slate-100">
+        <div class="flex flex-col items-center mb-6">
+            <div
+                class="w-14 h-14 bg-brand-500 rounded-2xl flex items-center justify-center text-white mb-3 shadow-lg shadow-brand-500/30">
+                <i data-lucide="user-plus" class="w-7 h-7"></i>
+            </div>
+            <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Admin Sign Up</h1>
+            <p class="text-sm text-slate-500 mt-1 text-center">Submit your details for Main Admin approval. Set your password after approval.</p>
+        </div>
+
+        <div id="error-box"
+            class="hidden mb-4 bg-rose-50 text-rose-600 text-xs font-semibold p-3.5 rounded-lg border border-rose-100 flex items-center space-x-2">
+            <i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
+            <span id="error-text">Please check your inputs.</span>
+            <a id="request-status-link" class="hidden underline" href="#">Open request status</a>
+        </div>
+
+        <form id="signup-form" class="space-y-4">
+            <!-- Full Name -->
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Full Name</label>
+                <input type="text" id="full-name" required placeholder="e.g. Juan Dela Cruz"
+                    class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+            </div>
+
+            <!-- Position & Department -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label
+                        class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Position</label>
+                    <input type="text" id="position" required placeholder="e.g. Store Supervisor"
+                        class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+                </div>
+                <div>
+                    <label
+                        class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Department</label>
+                    <input type="text" id="department" required placeholder="e.g. Operations"
+                        class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+                </div>
+            </div>
+
+            <!-- Email Only -->
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Email
+                    Address</label>
+                <div class="relative">
+                    <i data-lucide="mail" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="email" id="email" required placeholder="name@example.com"
+                        class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+                </div>
+            </div>
+
+            <button type="submit" id="signup-btn"
+                class="w-full py-3.5 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow-md shadow-brand-500/20 transition-all mt-2 flex justify-center items-center space-x-2">
+                <span id="signup-btn-text">Sign Up</span>
+                <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </button>
+
+            <p class="text-center text-xs text-slate-500 pt-1">
+                Already approved?
+                <a href="Login.html" class="text-brand-500 hover:text-brand-600 font-bold underline">Back to Login</a>
+            </p>
+        </form>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDnOqNF8U-uNKDQEZiR0AyMd6JAbFNEIFE",
+            authDomain: "cartpunch-5b2d8.firebaseapp.com",
+            databaseURL: "https://cartpunch-5b2d8-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "cartpunch-5b2d8",
+            storageBucket: "cartpunch-5b2d8.firebasestorage.app",
+            messagingSenderId: "520710359414",
+            appId: "1:520710359414:web:24f13d22d295deb2a0d257"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // Replace with your EmailJS Public Key, Service ID, Approval Template ID & Main Admin Email
+        const EMAILJS_PUBLIC_KEY = "IMe8nVqxdPtnxetW0";
+        const EMAILJS_SERVICE_ID = "service_wvjz4b8";
+        const EMAILJS_APPROVAL_TEMPLATE_ID = "template_mpb2gkd";
+        const MAIN_ADMIN_EMAIL = "cartpunch.security@gmail.com";
+
+        emailjs.init(EMAILJS_PUBLIC_KEY);
+
+        function showError(msg) {
+            document.getElementById('error-text').innerText = msg;
+            document.getElementById('error-box').classList.remove('hidden');
+            document.getElementById('request-status-link').classList.add('hidden');
+        }
+
+        document.getElementById('signup-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            document.getElementById('error-box').classList.add('hidden');
+
+            const name = document.getElementById('full-name').value.trim();
+            const position = document.getElementById('position').value.trim();
+            const department = document.getElementById('department').value.trim();
+            const email = document.getElementById('email').value.trim().toLowerCase();
+
+            // Strict email-only format check
+            const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+            if (!emailRegex.test(email)) {
+                return showError('Please enter a valid email address only.');
+            }
+
+            const btn = document.getElementById('signup-btn');
+            const btnText = document.getElementById('signup-btn-text');
+            btn.disabled = true;
+            btnText.innerText = 'Sending Approval Request...';
+
+            let requestSaved = false;
+            let requestId = null;
+            try {
+                const requestRef = db.ref('pending_admin_requests').push();
+                requestId = requestRef.key;
+                const now = Date.now();
+                const expiresAt = now + (5 * 60 * 1000); // 5 minutes expiration
+
+                const updates = {};
+                updates[`pending_admin_requests/${requestId}`] = {
+                    name,
+                    position,
+                    department,
+                    email,
+                    status: 'pending',
+                    createdAt: now,
+                    expiresAt
+                };
+                updates[`pending_admin_status/${requestId}`] = {
+                    status: 'pending',
+                    expiresAt
+                };
+                await db.ref().update(updates);
+                requestSaved = true;
+
+                const approveBaseUrl = new URL('ApproveAdmin.html', window.location.href).href;
+                const approveLink = `${approveBaseUrl}?req=${requestId}&action=approve`;
+                const rejectLink = `${approveBaseUrl}?req=${requestId}&action=reject`;
+
+                await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_APPROVAL_TEMPLATE_ID, {
+                    to_email: MAIN_ADMIN_EMAIL,
+                    applicant_name: name,
+                    applicant_position: position,
+                    applicant_department: department,
+                    applicant_email: email,
+                    approve_link: approveLink,
+                    reject_link: rejectLink,
+                    expires_in: '5 minutes'
+                });
+
+                window.location.href = `PendingApproval.html?req=${requestId}`;
+            } catch (err) {
+                console.error(err);
+                const details = err.text || err.message || 'Unknown error';
+                if (requestSaved) {
+                    showError('Your request was saved, but the approval email could not be sent: ' + details);
+                    const statusLink = document.getElementById('request-status-link');
+                    statusLink.href = `PendingApproval.html?req=${encodeURIComponent(requestId)}`;
+                    statusLink.classList.remove('hidden');
+                } else {
+                    showError('Failed to save your approval request: ' + details);
+                }
+                btn.disabled = false;
+                btnText.innerText = 'Sign Up';
+            }
+        });
+    </script>
+</body>
+
+</html>

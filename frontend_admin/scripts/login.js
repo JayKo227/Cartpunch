@@ -13,11 +13,36 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 const auth = firebase.auth();
+const db = firebase.database();
+const MAIN_ADMIN_EMAIL = 'cartpunch.security@gmail.com';
+const errorDiv = document.getElementById('error-message');
+const errorText = document.getElementById('error-text');
 
-// Check if already logged in
-auth.onAuthStateChanged(user => {
-    if (user) {
+function showLoginError(message) {
+    errorText.textContent = message;
+    errorDiv.classList.remove('hidden');
+}
+
+auth.onAuthStateChanged(async user => {
+    if (!user) return;
+
+    try {
+        if (user.email !== MAIN_ADMIN_EMAIL) {
+            if (!user.emailVerified) {
+                await auth.signOut();
+                return showLoginError('Verify your email address before signing in.');
+            }
+            const profile = await db.ref(`admins/${user.uid}`).once('value');
+            if (!profile.exists() || profile.val().role !== 'admin') {
+                await auth.signOut();
+                return showLoginError('This account has not been approved as an admin.');
+            }
+        }
         window.location.href = 'Admin.html';
+    } catch (error) {
+        console.error(error);
+        await auth.signOut();
+        showLoginError('Could not verify admin access: ' + error.message);
     }
 });
 
@@ -26,8 +51,6 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
     let email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
     const btn = document.getElementById('login-btn');
-    const errorDiv = document.getElementById('error-message');
-    const errorText = document.getElementById('error-text');
 
     // If user enters a raw username (e.g., 'admin'), convert it to a valid Firebase email
     if (!email.includes('@')) {
@@ -39,9 +62,6 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
     errorDiv.classList.add('hidden');
 
     auth.signInWithEmailAndPassword(email, password)
-        .then((userCredential) => {
-            // Success, the onAuthStateChanged will trigger and redirect
-        })
         .catch((error) => {
             errorDiv.classList.remove('hidden');
             errorText.textContent = error.message;

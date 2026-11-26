@@ -4,7 +4,7 @@
     ".write": false,
     "products": {
       ".read": true,
-      ".write": "auth != null"
+      ".write": "auth != null && (auth.token.email === 'cartpunch.security@gmail.com' || root.child('admins').child(auth.uid).child('role').val() === 'admin')"
     },
     "transactions": {
       ".read": "auth != null",
@@ -13,6 +13,71 @@
     "carts": {
       ".read": true,
       ".write": true
+    },
+    "admin_otp": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "admins": {
+      "$uid": {
+        ".read": "auth != null && (auth.token.email === 'cartpunch.security@gmail.com' || auth.uid === $uid)",
+        ".write": "auth != null && (auth.token.email === 'cartpunch.security@gmail.com' || (auth.uid === $uid && auth.token.email_verified === true && !data.exists() && newData.child('email').val() === auth.token.email && newData.child('role').val() === 'admin' && root.child('pending_admin_requests').child(newData.child('requestId').val()).child('email').val() === auth.token.email && root.child('pending_admin_requests').child(newData.child('requestId').val()).child('status').val() === 'approved'))"
+      }
+    },
+    "pending_admin_requests": {
+      "$reqId": {
+        ".read": "auth != null && (auth.token.email === 'cartpunch.security@gmail.com' || (auth.token.email_verified === true && auth.token.email === data.child('email').val() && data.child('status').val() === 'approved'))",
+        ".write": "auth != null && auth.token.email === 'cartpunch.security@gmail.com' || (auth == null && !data.exists())",
+        ".validate": "newData.hasChildren(['name', 'position', 'department', 'email', 'status', 'createdAt', 'expiresAt']) && newData.getChildrenCount() <= 10 && !newData.child('password').exists() && (auth != null && auth.token.email === 'cartpunch.security@gmail.com' || (newData.child('status').val() === 'pending' && newData.child('createdAt').val() <= now && newData.child('expiresAt').val() > now && newData.child('expiresAt').val() <= now + 600000))",
+        "name": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
+        },
+        "position": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
+        },
+        "department": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
+        },
+        "email": {
+          ".validate": "newData.isString() && newData.val().length > 3 && newData.val().length <= 254"
+        },
+        "status": {
+          ".validate": "newData.val() === 'pending' && !data.exists() || auth != null && auth.token.email === 'cartpunch.security@gmail.com' && data.val() === 'pending' && ((newData.val() === 'expired' && root.child('pending_admin_requests').child($reqId).child('expiresAt').val() <= now) || ((newData.val() === 'approved' || newData.val() === 'rejected') && root.child('pending_admin_requests').child($reqId).child('expiresAt').val() > now))"
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "expiresAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "approvedAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "resolvedAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "resolvedBy": {
+          ".validate": "newData.isString() && newData.val().length <= 254"
+        }
+      }
+    },
+    "pending_admin_status": {
+      "$reqId": {
+        ".read": true,
+        ".write": "auth != null && auth.token.email === 'cartpunch.security@gmail.com' || (auth == null && !data.exists() && newData.child('status').val() === 'pending')",
+        ".validate": "newData.hasChildren(['status', 'expiresAt']) && newData.getChildrenCount() <= 3",
+        "status": {
+          ".validate": "newData.val() === 'pending' && !data.exists() || auth != null && auth.token.email === 'cartpunch.security@gmail.com' && data.val() === 'pending' && ((newData.val() === 'expired' && root.child('pending_admin_requests').child($reqId).child('expiresAt').val() <= now) || ((newData.val() === 'approved' || newData.val() === 'rejected') && root.child('pending_admin_requests').child($reqId).child('expiresAt').val() > now))"
+        },
+        "expiresAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "resolvedAt": {
+          ".validate": "newData.isNumber()"
+        }
+      }
     }
   }
 }

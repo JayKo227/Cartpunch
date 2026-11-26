@@ -494,11 +494,18 @@
     </main>
 
     <!-- Add/Edit Product Modal -->
-    <div id="product-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-6 shadow-2xl">
+    <div id="product-modal"
+        class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 space-y-5 shadow-2xl">
             <div class="flex justify-between items-center border-b border-slate-100 pb-4">
                 <h3 id="modal-title" class="text-xl font-bold text-slate-800">Add New Product</h3>
-                <button onclick="closeProductModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+                <button type="button" onclick="closeProductModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x"
+                        class="w-5 h-5"></i></button>
+            </div>
+            <div id="product-modal-error"
+                class="hidden bg-rose-50 text-rose-600 text-xs font-semibold p-3 rounded-lg border border-rose-100 flex items-center space-x-2">
+                <i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
+                <span id="product-modal-error-text"></span>
             </div>
             <form id="product-form" onsubmit="saveProduct(event)" class="space-y-4 text-slate-700">
                 <div>
@@ -511,8 +518,10 @@
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Price (₱)</label>
-                        <input id="input-price" type="number" step="0.01" required placeholder="56.60" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 font-mono">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Price
+                            (₱)</label>
+                        <input id="input-price" type="number" step="0.01" min="0" required placeholder="56.60"
+                            class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 font-mono">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Stock Level</label>
@@ -524,11 +533,21 @@
                     </div>
                 </div>
                 <div class="pt-4 flex space-x-3">
-                    <button type="button" onclick="closeProductModal()" class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-lg text-sm transition-all">Cancel</button>
-                    <button type="submit" class="flex-1 py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg text-sm shadow-md shadow-brand-500/20 transition-all">Save Product</button>
+                    <button type="button" onclick="closeProductModal()"
+                        class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-lg text-sm transition-all">Cancel</button>
+                    <button type="submit" id="save-product-btn"
+                        class="flex-1 py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg text-sm shadow-md shadow-brand-500/20 transition-all">Save
+                        Product</button>
                 </div>
             </form>
         </div>
+    </div>
+
+    <!-- Floating Sync Toast -->
+    <div id="sync-toast"
+        class="hidden fixed bottom-6 right-6 z-[110] px-4 py-3 rounded-xl shadow-lg border text-sm font-semibold flex items-center space-x-2 animate-fade-in">
+        <i id="sync-toast-icon" data-lucide="check-circle" class="w-4 h-4 shrink-0"></i>
+        <span id="sync-toast-text"></span>
     </div>
 
     <style>
@@ -556,11 +575,31 @@
         const auth = firebase.auth();
         const db = firebase.database();
 
-        // Enforce Authentication
-        auth.onAuthStateChanged(user => {
+        const MAIN_ADMIN_EMAIL = 'cartpunch.security@gmail.com';
+
+        // Enforce authentication and an approved admin profile.
+        auth.onAuthStateChanged(async user => {
             if (!user) {
-                // Not logged in, redirect to login page
-                window.location.href = 'Login.html';
+                window.location.replace('Login.html');
+                return;
+            }
+
+            try {
+                if (user.email === MAIN_ADMIN_EMAIL) return;
+                if (!user.emailVerified) {
+                    await auth.signOut();
+                    window.location.replace('Login.html');
+                    return;
+                }
+                const profile = await db.ref(`admins/${user.uid}`).once('value');
+                if (!profile.exists() || profile.val().role !== 'admin') {
+                    await auth.signOut();
+                    window.location.replace('Login.html');
+                }
+            } catch (error) {
+                console.error('Could not verify admin access:', error);
+                await auth.signOut();
+                window.location.replace('Login.html');
             }
         });
 
@@ -591,41 +630,93 @@
             }
         });
 
-        // Listen for Realtime Products
-        db.ref('products').on('value', (snapshot) => {
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        let toastTimer = null;
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('sync-toast');
+            const icon = document.getElementById('sync-toast-icon');
+            const text = document.getElementById('sync-toast-text');
+            if (!toast || !text) return;
+
+            toast.className = `fixed bottom-6 right-6 z-[110] px-4 py-3 rounded-xl shadow-lg border text-sm font-semibold flex items-center space-x-2 animate-fade-in ${
+                isError
+                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                    : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+            }`;
+            if (icon) {
+                icon.setAttribute('data-lucide', isError ? 'alert-circle' : 'check-circle');
+            }
+            text.innerText = message;
+            toast.classList.remove('hidden');
+            lucide.createIcons();
+
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.add('hidden'), 3500);
+        }
+
+        function applyProductsSnapshot(snapshot) {
             const data = snapshot.val();
             allProducts = [];
             if (data) {
                 Object.keys(data).forEach(key => {
+                    const raw = data[key];
+                    if (!raw || typeof raw !== 'object') return;
+                    const itemName = raw.name || raw.item_description || raw.description || 'Unknown Item';
+                    const itemPrice = parseFloat(raw.price !== undefined ? raw.price : raw.unit_price) || 0;
+                    const itemStock = raw.stock || 'High Stock';
+                    const barcode = String(raw.sku || key);
                     allProducts.push({
-                        barcode: key,
-                        ...data[key]
+                        ...raw,
+                        dbKey: key,
+                        barcode: barcode,
+                        name: itemName,
+                        price: itemPrice,
+                        stock: itemStock
                     });
                 });
             }
-            // Update Dashboard Stat
             document.getElementById('stat-total-products').innerText = allProducts.length.toLocaleString();
-            
-            // Update timestamp
             const now = new Date();
-            // Apply active filters upon sync
-            filterProducts();
+            const lastSyncEl = document.getElementById('last-sync-time');
+            if (lastSyncEl) {
+                lastSyncEl.innerText = `Last sync: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+            }
+            filterProducts(false);
+        }
+
+        // Listen for Realtime Products
+        db.ref('products').on('value', applyProductsSnapshot, (error) => {
+            console.error('Firebase products listener error:', error);
+            showToast('Firebase sync error: ' + error.message, true);
         });
 
-        function forceSync() {
+        async function forceSync() {
             const syncBtn = document.getElementById('sync-status');
             syncBtn.innerText = "Syncing...";
             syncBtn.parentElement.classList.replace('text-emerald-600', 'text-brand-500');
             syncBtn.parentElement.classList.replace('bg-emerald-100/50', 'bg-brand-50');
-            
-            setTimeout(() => {
+
+            try {
+                const snapshot = await db.ref('products').once('value');
+                applyProductsSnapshot(snapshot);
+                addActivityLog("Just now", `Synced ${allProducts.length.toLocaleString()} products from Firebase`, "brand");
+                showToast(`Synced ${allProducts.length.toLocaleString()} products from Firebase`);
+            } catch (err) {
+                console.error('Force sync error:', err);
+                showToast('Sync failed: ' + err.message, true);
+            } finally {
                 syncBtn.innerText = "Firebase Synchronized";
                 syncBtn.parentElement.classList.replace('text-brand-500', 'text-emerald-600');
                 syncBtn.parentElement.classList.replace('bg-brand-50', 'bg-emerald-100/50');
-                const now = new Date();
-                document.getElementById('last-sync-time').innerText = `Last sync: ${now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
-                addActivityLog("Just now", "Manual forced sync triggered", "brand");
-            }, 800);
+            }
         }
 
         function addActivityLog(time, text, color) {
@@ -685,23 +776,23 @@
             const displayList = list.slice(startIndex, endIndex);
 
             tbody.innerHTML = displayList.map(item => {
-                const safeBarcode = item.barcode.replace(/'/g, "\\'");
+                const encodedKey = encodeURIComponent(item.dbKey);
                 const stockStatus = getStockStatus(item.stock);
                 return `
                 <tr class="hover:bg-slate-50 transition-colors group">
-                    <td class="p-4 pl-6 font-mono font-medium text-slate-500">${item.barcode}</td>
-                    <td class="p-4 font-bold text-slate-800">${item.name}</td>
+                    <td class="p-4 pl-6 font-mono font-medium text-slate-500">${escapeHtml(item.barcode)}</td>
+                    <td class="p-4 font-bold text-slate-800">${escapeHtml(item.name)}</td>
                     <td class="p-4 font-mono text-slate-700 font-semibold">₱${parseFloat(item.price || 0).toFixed(2)}</td>
                     <td class="p-4">
                         <span class="px-2.5 py-1 rounded-md text-xs font-bold shadow-sm ${
                             stockStatus === 'High Stock' ? 'bg-green-500 text-white border border-green-600' :
                             stockStatus === 'Moderate Stock' ? 'bg-yellow-400 text-yellow-900 border border-yellow-500' :
                             'bg-red-500 text-white border border-red-600'
-                        }">${stockStatus}</span>
+                    }">${escapeHtml(stockStatus)}</span>
                     </td>
                     <td class="p-4 text-right pr-6 space-x-1">
-                        <button onclick="editProduct('${safeBarcode}')" class="p-2 text-slate-400 hover:text-brand-500 hover:bg-brand-50 rounded-md transition-all"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
-                        <button onclick="deleteProduct('${safeBarcode}')" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        <button type="button" onclick="editProduct(decodeURIComponent('${encodedKey}'))" title="Edit Product" class="p-2 text-slate-400 hover:text-brand-500 hover:bg-brand-50 rounded-md transition-all"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                        <button type="button" onclick="deleteProduct(decodeURIComponent('${encodedKey}'))" title="Delete Product" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                     </td>
                 </tr>
                 `;
@@ -751,7 +842,7 @@
             }
         }
 
-        function filterProducts() {
+        function filterProducts(resetPage = true) {
             const searchInput = document.getElementById('search-input');
             const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
             const stockSelect = document.getElementById('filter-stock');
@@ -784,8 +875,9 @@
                 return 0; // default (keeps Firebase's default key order)
             });
 
-            // Reset to page 1 on new filter
-            renderProducts(filtered, 1);
+            const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+            const targetPage = resetPage ? 1 : Math.min(currentPage, totalPages);
+            renderProducts(filtered, targetPage);
         }
 
         // Navigation Tabs with localStorage persistence
@@ -804,11 +896,26 @@
             document.getElementById(`nav-${tab}`).className = 'w-full flex items-center space-x-3 px-4 py-3 rounded-md font-medium text-sm transition-all bg-white text-brand-500 shadow-sm';
         }
 
-        let editingBarcode = null;
+        let editingKey = null;
+
+        function showProductModalError(msg) {
+            const box = document.getElementById('product-modal-error');
+            const text = document.getElementById('product-modal-error-text');
+            if (!box || !text) return;
+            text.innerText = msg;
+            box.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function hideProductModalError() {
+            const box = document.getElementById('product-modal-error');
+            if (box) box.classList.add('hidden');
+        }
 
         // Modal Handlers
         function openAddModal() {
-            editingBarcode = null;
+            editingKey = null;
+            hideProductModalError();
             document.getElementById('modal-title').innerText = 'Add New Product';
             document.getElementById('input-barcode').value = '';
             document.getElementById('input-barcode').disabled = false;
@@ -819,58 +926,118 @@
         }
 
         function closeProductModal() {
+            hideProductModalError();
             document.getElementById('product-modal').classList.add('hidden');
         }
 
-        function editProduct(barcode) {
-            const prod = allProducts.find(p => p.barcode === barcode);
+        function editProduct(dbKey) {
+            const prod = allProducts.find(p => p.dbKey === dbKey || p.barcode === dbKey);
             if (!prod) return;
-            editingBarcode = barcode;
+            editingKey = prod.dbKey;
+            hideProductModalError();
             document.getElementById('modal-title').innerText = 'Edit Product';
-            document.getElementById('input-barcode').value = barcode;
+            document.getElementById('input-barcode').value = prod.barcode;
             document.getElementById('input-barcode').disabled = false;
             document.getElementById('input-name').value = prod.name;
             document.getElementById('input-price').value = prod.price;
-            document.getElementById('input-stock').value = prod.stock || 'High Stock';
+            document.getElementById('input-stock').value = getStockStatus(prod.stock);
             document.getElementById('product-modal').classList.remove('hidden');
         }
 
-        function saveProduct(e) {
+        async function saveProduct(e) {
             e.preventDefault();
+            hideProductModalError();
+
+            if (!auth.currentUser) {
+                return showProductModalError('Your admin session expired. Please sign in again.');
+            }
+
             const newBarcode = document.getElementById('input-barcode').value.trim();
             const name = document.getElementById('input-name').value.trim();
             const price = parseFloat(document.getElementById('input-price').value);
             const stock = document.getElementById('input-stock').value;
 
-            if (!newBarcode || !name || isNaN(price)) return;
-
-            const productData = {
-                name: name,
-                price: price,
-                stock: stock
-            };
-
-            // If barcode was edited to a new number, delete old barcode entry first
-            if (editingBarcode && editingBarcode !== newBarcode) {
-                db.ref(`products/${editingBarcode}`).remove();
+            if (!newBarcode || !name || isNaN(price) || price < 0) {
+                return showProductModalError('Please enter a valid barcode number, product name, and non-negative price.');
             }
 
-            db.ref(`products/${newBarcode}`).set(productData).then(() => {
+            // Firebase RTDB keys cannot contain . # $ [ ] /
+            if (/[.#$\[\]\/]/.test(newBarcode)) {
+                return showProductModalError('Barcode cannot contain . # $ [ ] or / characters.');
+            }
+
+            const conflict = allProducts.find(p => (p.dbKey === newBarcode || p.barcode === newBarcode) && p.dbKey !== editingKey);
+            if (conflict) {
+                const actionLabel = editingKey ? 'reassign to' : 'overwrite';
+                if (!confirm(`Barcode "${newBarcode}" already exists (${conflict.name}). Do you want to ${actionLabel} it?`)) {
+                    return;
+                }
+            }
+
+            const existingProd = editingKey ? allProducts.find(p => p.dbKey === editingKey) : null;
+            const roundedPrice = Math.round(price * 100) / 100;
+            const productData = {
+                sku: newBarcode,
+                name: name,
+                item_description: name,
+                price: roundedPrice,
+                unit_price: roundedPrice,
+                stock: stock,
+                updatedAt: Date.now()
+            };
+            if (existingProd && existingProd.category) {
+                productData.category = existingProd.category;
+            }
+
+            const saveBtn = document.getElementById('save-product-btn');
+            saveBtn.disabled = true;
+            saveBtn.innerText = 'Saving...';
+
+            try {
+                const updates = {};
+                if (editingKey && editingKey !== newBarcode) {
+                    updates[editingKey] = null;
+                }
+                updates[newBarcode] = productData;
+
+                await db.ref('products').update(updates);
                 const now = new Date();
-                addActivityLog(now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), `Saved product: ${name}`, 'emerald');
+                const logLabel = editingKey
+                    ? (editingKey !== newBarcode ? `Updated ${editingKey} -> ${newBarcode}: ${name}` : `Updated ${newBarcode}: ${name}`)
+                    : `Added ${newBarcode}: ${name}`;
+                addActivityLog(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), logLabel, 'emerald');
                 closeProductModal();
-            }).catch(error => {
-                alert("Error saving product: " + error.message);
+                showToast(`${editingKey ? 'Updated' : 'Added'} "${name}" (${newBarcode}) in Firebase`);
+            } catch (error) {
                 console.error("Firebase save error:", error);
-            });
+                showProductModalError("Error saving to Firebase: " + error.message);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerText = 'Save Product';
+            }
         }
 
-        function deleteProduct(barcode) {
-            if (confirm(`Are you sure you want to delete product "${barcode}"?`)) {
-                db.ref(`products/${barcode}`).remove().then(() => {
-                    const now = new Date();
-                    addActivityLog(now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), `Deleted barcode: ${barcode}`, 'rose');
-                });
+        async function deleteProduct(dbKey) {
+            const prod = allProducts.find(p => p.dbKey === dbKey || p.barcode === dbKey);
+            const targetKey = prod ? prod.dbKey : dbKey;
+            const label = prod ? `${prod.name} (${prod.barcode})` : dbKey;
+
+            if (!auth.currentUser) {
+                return showToast('Your admin session expired. Please sign in again.', true);
+            }
+
+            if (!confirm(`Are you sure you want to delete "${label}" from Firebase?`)) {
+                return;
+            }
+
+            try {
+                await db.ref(`products/${targetKey}`).remove();
+                const now = new Date();
+                addActivityLog(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), `Deleted product: ${label}`, 'rose');
+                showToast(`Deleted "${label}" from Firebase`);
+            } catch (error) {
+                console.error("Firebase delete error:", error);
+                showToast("Error deleting product: " + error.message, true);
             }
         }
         
