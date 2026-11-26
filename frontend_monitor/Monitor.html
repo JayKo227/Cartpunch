@@ -4,26 +4,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CartPunch UI Prototype</title>
+    <title>CartPunch System</title>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React & ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js"></script>
+
+    <!-- Babel for in-browser JSX compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 
     <script>
         // Firebase Configuration
         const firebaseConfig = {
-            apiKey: "AIzaSyDnOqNF8U-uNKDQEZiR0AyMd6JAbFNEIFE",
-            authDomain: "cartpunch-5b2d8.firebaseapp.com",
-            databaseURL: "https://cartpunch-5b2d8-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "cartpunch-5b2d8",
-            storageBucket: "cartpunch-5b2d8.firebasestorage.app",
-            messagingSenderId: "520710359414",
-            appId: "1:520710359414:web:24f13d22d295deb2a0d257"
+            apiKey: "AIzaSyAnpeLs7fpfkWIxdlqttvd9N_kQM1fss0E",
+            authDomain: "cartpunch-a2267.firebaseapp.com",
+            databaseURL: "https://cartpunch-a2267-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "cartpunch-a2267",
+            storageBucket: "cartpunch-a2267.firebasestorage.app",
+            messagingSenderId: "413542821283",
+            appId: "1:413542821283:web:3bb97cdb6f8b54e774fe16",
+            measurementId: "G-85ZWVTWG67"
         };
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
@@ -32,6 +46,11 @@
     </script>
 
     <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        /* Custom Scanner & Floating Animations */
         @keyframes scan {
             0% {
                 top: 10%;
@@ -60,8 +79,36 @@
             }
 
             50% {
-                transform: translateY(-15px);
+                transform: translateY(-10px);
             }
+        }
+
+        @keyframes rowGlowYellow {
+
+            0%,
+            100% {
+                background-color: rgba(254, 240, 138, 0.92);
+            }
+
+            50% {
+                background-color: rgba(253, 224, 71, 0.98);
+            }
+        }
+
+        @keyframes rowGlowRed {
+
+            0%,
+            100% {
+                background-color: rgba(254, 202, 202, 0.92);
+            }
+
+            50% {
+                background-color: rgba(252, 165, 165, 0.98);
+            }
+        }
+
+        .animate-scan-line {
+            animation: scan 2s ease-in-out infinite;
         }
 
         .animate-float-up {
@@ -79,232 +126,443 @@
     </style>
 </head>
 
-<body class="bg-neutral-100 min-h-screen">
-
+<body class="bg-neutral-200 m-0 p-0">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef } = React;
 
-        // --- INLINE SVG ICON SHIMS (Replacing lucide-react dependencies) ---
-        const ScanLine = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 7V5a2 2 0 0 1 2-2h2" /><path d="M17 3h2a2 2 0 0 1 2 2v2" /><path d="M21 17v2a2 2 0 0 1-2 2h-2" /><path d="M7 21H5a2 2 0 0 1-2-2v-2" /><line x1="3" x2="21" y1="12" y2="12" /></svg>
-        );
-        const ShoppingCart = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="8" cy="21" r="1" /><circle cx="19" cy="21" r="1" /><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" /></svg>
-        );
-        const ArrowLeft = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 19-7-7 7-7" /><path d="M19 12H5" /></svg>
-        );
-        const Plus = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" x2="12" y1="5" y2="19" /><line x1="5" x2="19" y1="12" y2="12" /></svg>
-        );
-        const Minus = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="5" x2="19" y1="12" y2="12" /></svg>
-        );
-        const Search = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
-        );
-        const AlertCircle = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
-        );
-        const CreditCard = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="20" height="14" x="2" y="5" rx="2" /><line x1="2" x2="22" y1="10" y2="10" /></svg>
-        );
-        const Keyboard = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="20" height="12" x="2" y="6" rx="2" /><path d="M6 10h.01" /><path d="M10 10h.01" /><path d="M14 10h.01" /><path d="M18 10h.01" /><path d="M6 14h.01" /><path d="M18 14h.01" /><path d="M10 14h4" /></svg>
-        );
-        const Type = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="4 7 4 4 20 4 20 7" /><line x1="9" x2="15" y1="20" y2="20" /><line x1="12" x2="12" y1="4" y2="20" /></svg>
-        );
-        const Delete = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 5H9l-7 7 7 7h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Z" /><line x1="18" x2="12" y1="9" y2="15" /><line x1="12" x2="18" y1="9" y2="15" /></svg>
-        );
-        const CheckCircle2 = ({ size = 24, className = "", strokeWidth = 2 }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10" /><path d="m9 12 2 2 4-4" /></svg>
-        );
-        const ChevronDown = ({ size = 24, className = "", strokeWidth = 2 }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m6 9 6 6 6-6" /></svg>
-        );
-        const ChevronUp = ({ size = 24, className = "", strokeWidth = 2 }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m18 15-6-6-6 6" /></svg>
-        );
-        const Trash2 = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /><line x1="10" x2="10" y1="11" y2="17" /><line x1="14" x2="14" y1="11" y2="17" /></svg>
-        );
-        const Barcode = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 5v14" /><path d="M21 5v14" /><path d="M7 5v14" /><path d="M11 5v14" /><path d="M14 5v14" /><path d="M17 5v14" /></svg>
-        );
-        const BookOpen = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
-        );
-        const X = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
-        );
-        const Pencil = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /><path d="m15 5 4 4" /></svg>
-        );
-
-        // --- FIREBASE LIVE DATABASE INTEGRATION ---
-        // Products will be fetched dynamically via React state.
-        
-        // Helper to format raw numeric string to string with comma thousands separator
+        // Format numeric strings with comma separators
         const formatNumberWithCommas = (str) => {
-            if (!str) return '';
-            const parts = str.split('.');
+            if (str === undefined || str === null || str === '') return '0';
+            const parts = str.toString().split('.');
             parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
             return parts.join('.');
         };
 
-        const useLocalStorageState = (key, initialValue) => {
-            const [state, setState] = useState(() => {
-                try {
-                    const item = window.localStorage.getItem(key);
-                    return item ? JSON.parse(item) : initialValue;
-                } catch (error) {
-                    console.warn("Error reading localStorage", error);
-                    return initialValue;
-                }
-            });
-            useEffect(() => {
-                try {
-                    window.localStorage.setItem(key, JSON.stringify(state));
-                } catch (error) {
-                    console.warn("Error setting localStorage", error);
-                }
-            }, [key, state]);
-            return [state, setState];
-        };
+        // --- SELF-CONTAINED SVG ICONS ---
+        const IconWrapper = ({ size = 24, strokeWidth = 2, className = "", children }) => (
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width={size}
+                height={size}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={strokeWidth}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={className}
+            >
+                {children}
+            </svg>
+        );
+
+        const ScanLine = (props) => (
+            <IconWrapper {...props}>
+                <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+                <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+                <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+                <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+                <line x1="7" x2="17" y1="12" y2="12" />
+            </IconWrapper>
+        );
+
+        const ShoppingCart = (props) => (
+            <IconWrapper {...props}>
+                <circle cx="8" cy="21" r="1" />
+                <circle cx="19" cy="21" r="1" />
+                <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+            </IconWrapper>
+        );
+
+        const ArrowLeft = (props) => (
+            <IconWrapper {...props}>
+                <path d="m12 19-7-7 7-7" />
+                <path d="M19 12H5" />
+            </IconWrapper>
+        );
+
+        const Plus = (props) => (
+            <IconWrapper {...props}>
+                <path d="M5 12h14" />
+                <path d="M12 5v14" />
+            </IconWrapper>
+        );
+
+        const Minus = (props) => (
+            <IconWrapper {...props}>
+                <path d="M5 12h14" />
+            </IconWrapper>
+        );
+
+        const AlertCircle = (props) => (
+            <IconWrapper {...props}>
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" x2="12" y1="8" y2="12" />
+                <line x1="12" x2="12.01" y1="16" y2="16" />
+            </IconWrapper>
+        );
+
+        const Keyboard = (props) => (
+            <IconWrapper {...props}>
+                <path d="M10 8h.01" />
+                <path d="M12 12h.01" />
+                <path d="M14 8h.01" />
+                <path d="M16 12h.01" />
+                <path d="M18 8h.01" />
+                <path d="M6 8h.01" />
+                <path d="M7 16h10" />
+                <path d="M8 12h.01" />
+                <rect width="20" height="16" x="2" y="4" rx="2" />
+            </IconWrapper>
+        );
+
+        const Type = (props) => (
+            <IconWrapper {...props}>
+                <polyline points="4 7 4 4 20 4 20 7" />
+                <line x1="9" x2="15" y1="20" y2="20" />
+                <line x1="12" x2="12" y1="4" y2="20" />
+            </IconWrapper>
+        );
+
+        const Delete = (props) => (
+            <IconWrapper {...props}>
+                <path d="M20 5H9l-7 7 7 7h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Z" />
+                <line x1="18" x2="12" y1="9" y2="15" />
+                <line x1="12" x2="18" y1="9" y2="15" />
+            </IconWrapper>
+        );
+
+        const CheckCircle2 = (props) => (
+            <IconWrapper {...props}>
+                <circle cx="12" cy="12" r="10" />
+                <path d="m9 12 2 2 4-4" />
+            </IconWrapper>
+        );
+
+        const ChevronDown = (props) => (
+            <IconWrapper {...props}>
+                <path d="m6 9 6 6 6-6" />
+            </IconWrapper>
+        );
+
+        const ChevronUp = (props) => (
+            <IconWrapper {...props}>
+                <path d="m18 15-6-6-6 6" />
+            </IconWrapper>
+        );
+
+        const Trash2 = (props) => (
+            <IconWrapper {...props}>
+                <path d="M3 6h18" />
+                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                <line x1="10" x2="10" y1="11" y2="17" />
+                <line x1="14" x2="14" y1="11" y2="17" />
+            </IconWrapper>
+        );
+
+        const Barcode = (props) => (
+            <IconWrapper {...props}>
+                <path d="M3 5v14" />
+                <path d="M8 5v14" />
+                <path d="M12 5v14" />
+                <path d="M17 5v14" />
+                <path d="M21 5v14" />
+            </IconWrapper>
+        );
+
+        const BookOpen = (props) => (
+            <IconWrapper {...props}>
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+            </IconWrapper>
+        );
+
+        const X = (props) => (
+            <IconWrapper {...props}>
+                <path d="M18 6 6 18" />
+                <path d="m6 6 12 12" />
+            </IconWrapper>
+        );
+
+        const ShieldCheck = (props) => (
+            <IconWrapper {...props}>
+                <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+                <path d="m9 12 2 2 4-4" />
+            </IconWrapper>
+        );
+
+        const Search = (props) => (
+            <IconWrapper {...props}>
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" />
+            </IconWrapper>
+        );
+
+        // Sideways Battery Icon
+        const SidewaysBattery = () => (
+            <div className="flex items-center" title="Battery Status">
+                <div className="w-6 h-3 rounded-[3px] border-[1.5px] border-gray-600 p-[1.5px] flex items-center bg-white">
+                    <div className="h-full w-4/5 bg-emerald-500 rounded-[1px]"></div>
+                </div>
+                <div className="w-[2px] h-1.5 bg-gray-600 rounded-r-[1px] ml-[1px]"></div>
+            </div>
+        );
 
         function App() {
-            // --- STATE MANAGEMENT ---
-            const [products, setProducts] = useState([]); // Live Firebase products
-            const [screen, setScreen] = useLocalStorageState('cartpunch_monitor_screen', 'splash1');
-            const [budgetMode, setBudgetMode] = useLocalStorageState('cartpunch_monitor_budgetMode', false);
-            const [budget, setBudget] = useLocalStorageState('cartpunch_monitor_budget', 0);
-            const [cart, setCart] = useLocalStorageState('cartpunch_monitor_cart', []);
+            // --- LIVE FIREBASE DATABASE PRODUCTS ---
+            const [products, setProducts] = useState([]);
+
+            // --- NAVIGATION & CORE STATE ---
+            const [screen, setScreen] = useState('splash1');
+            const [budgetMode, setBudgetMode] = useState('none');
+            const [budget, setBudget] = useState(0);
+            const [budgetInputStr, setBudgetInputStr] = useState('');
+            const CATEGORIES = [
+                { key: 'snacks', label: 'Snacks', emoji: '🍿', keywords: ['snack', 'chip', 'crisp', 'popcorn', 'pretzel'] },
+                { key: 'biscuits', label: 'Biscuits & Cookies', emoji: '🍪', keywords: ['biscuit', 'cookie', 'crackers', 'wafer'] },
+                { key: 'meat', label: 'Meat & Poultry', emoji: '🥩', keywords: ['meat', 'beef', 'pork', 'chicken', 'longganisa', 'tocino', 'hotdog', 'sausage'] },
+                { key: 'dairy', label: 'Dairy & Eggs', emoji: '🥛', keywords: ['milk', 'cheese', 'butter', 'yogurt', 'egg', 'cream'] },
+                { key: 'beverages', label: 'Beverages', emoji: '🥤', keywords: ['juice', 'water', 'soda', 'drink', 'cola', 'coffee', 'tea', 'energy'] },
+                { key: 'bread', label: 'Bread & Pastry', emoji: '🍞', keywords: ['bread', 'pandesal', 'loaf', 'bun', 'roll', 'cake', 'muffin', 'donut'] },
+                { key: 'noodles', label: 'Noodles & Rice', emoji: '🍜', keywords: ['noodle', 'pasta', 'spaghetti', 'rice', 'miki', 'bihon', 'sotanghon'] },
+                { key: 'canned', label: 'Canned Goods', emoji: '🥫', keywords: ['canned', 'corned', 'spam', 'tuna', 'sardines', 'luncheon'] },
+                { key: 'condiments', label: 'Condiments & Spices', emoji: '🧂', keywords: ['sauce', 'vinegar', 'soy', 'ketchup', 'sugar', 'salt', 'pepper', 'seasoning', 'oil', 'mayonnaise'] },
+                { key: 'personal', label: 'Personal Care', emoji: '🧴', keywords: ['soap', 'shampoo', 'toothpaste', 'lotion', 'deodorant', 'powder', 'cologne', 'tissue'] },
+                { key: 'cleaning', label: 'Cleaning Supplies', emoji: '🧹', keywords: ['detergent', 'bleach', 'fabric', 'softener', 'cleaner', 'dishwash'] },
+                { key: 'others', label: 'Others', emoji: '🛒', keywords: [] }
+            ];
+            const mkDefaultCatBudgets = () => CATEGORIES.reduce((budgets, category) => {
+                budgets[category.key] = '';
+                return budgets;
+            }, {});
+            const [categoryBudgets, setCategoryBudgets] = useState(mkDefaultCatBudgets);
+            const [lastScannedCategory, setLastScannedCategory] = useState(null);
+            const detectCategory = (productName) => {
+                const name = (productName || '').toLowerCase();
+                return CATEGORIES.find(category =>
+                    category.keywords.length > 0 && category.keywords.some(keyword => name.includes(keyword))
+                ) || CATEGORIES.find(category => category.key === 'others');
+            };
+
+            // Cart & Scanning State
+            const [cart, setCart] = useState([]);
             const [scannedItem, setScannedItem] = useState(null);
             const [itemQty, setItemQty] = useState(1);
-            const [budgetInputStr, setBudgetInputStr] = useState('');
-            const [manualInputType, setManualInputType] = useState('barcode');
+            const [manualInputType, setManualInputType] = useState('barcode'); // 'barcode' | 'name'
             const [manualInputValue, setManualInputValue] = useState('');
             const [searchResults, setSearchResults] = useState([]);
             const [isKeyboardVisible, setIsKeyboardVisible] = useState(true);
             const [isOnline, setIsOnline] = useState(true);
-
-            const [hasShown70Warning, setHasShown70Warning] = useState(false);
-            const [popupAlert, setPopupAlert] = useState(null); // 'limit' or 'warning70'
-
-            // Navigation history/context for going back
-            const [returnScreen, setReturnScreen] = useState(null);
-            const [scanOrigin, setScanOrigin] = useState('scanning'); // Tracks where to go on Cancel
-
-            // --- CATEGORY BUDGET STATE ---
-            const CATEGORIES = [
-                { key: 'snacks',     label: 'Snacks',              emoji: '🍿', keywords: ['snack','chip','crisp','popcorn','pretzel'] },
-                { key: 'biscuits',   label: 'Biscuits & Cookies',  emoji: '🍪', keywords: ['biscuit','cookie','crackers','wafer'] },
-                { key: 'meat',       label: 'Meat & Poultry',      emoji: '🥩', keywords: ['meat','beef','pork','chicken','longganisa','tocino','hotdog','sausage'] },
-                { key: 'dairy',      label: 'Dairy & Eggs',        emoji: '🥛', keywords: ['milk','cheese','butter','yogurt','egg','cream'] },
-                { key: 'beverages',  label: 'Beverages',           emoji: '🥤', keywords: ['juice','water','soda','drink','cola','coffee','tea','energy'] },
-                { key: 'bread',      label: 'Bread & Pastry',      emoji: '🍞', keywords: ['bread','pandesal','loaf','bun','roll','cake','muffin','donut'] },
-                { key: 'noodles',    label: 'Noodles & Rice',      emoji: '🍜', keywords: ['noodle','pasta','spaghetti','rice','miki','bihon','sotanghon'] },
-                { key: 'canned',     label: 'Canned Goods',        emoji: '🥫', keywords: ['canned','corned','spam','tuna','sardines','luncheon'] },
-                { key: 'condiments', label: 'Condiments & Spices', emoji: '🧂', keywords: ['sauce','vinegar','soy','ketchup','sugar','salt','pepper','seasoning','oil','mayonnaise'] },
-                { key: 'personal',   label: 'Personal Care',       emoji: '🧴', keywords: ['soap','shampoo','toothpaste','lotion','deodorant','powder','cologne','tissue'] },
-                { key: 'cleaning',   label: 'Cleaning Supplies',   emoji: '🧹', keywords: ['detergent','bleach','fabric','softener','cleaner','dishwash'] },
-                { key: 'others',     label: 'Others',              emoji: '🛒', keywords: [] }
-            ];
-
-            const mkDefaultCatBudgets = () => CATEGORIES.reduce((a,c) => { a[c.key]=''; return a; }, {});
-            const [categoryBudgets, setCategoryBudgets] = useLocalStorageState('cartpunch_monitor_catBudgets', mkDefaultCatBudgets());
-            const [lastScannedCategory, setLastScannedCategory] = useState(null);
-
-            const detectCategory = (productName) => {
-                const lower = (productName||'').toLowerCase();
-                for (const cat of CATEGORIES) {
-                    if (cat.keywords.length > 0 && cat.keywords.some(kw => lower.includes(kw))) return cat;
-                }
-                return CATEGORIES.find(c => c.key === 'others');
-            };
-
-            const getCategorySpent = (catKey) =>
-                cart.filter(item => detectCategory(item.name).key === catKey)
-                    .reduce((sum, item) => sum + (item.price * item.qty), 0);
-            
-            // --- STATE RECOVERY SAFETY NET ---
             useEffect(() => {
-                // If the user reloads the page, localStorage might restore them to a screen 
-                // that requires transient state (which is reset to null/empty on reload). 
-                // This prevents a blank white screen by safely returning them to the scanning screen.
-                if (screen === 'item_scanned' && !scannedItem) {
-                    setScreen('scanning');
+                const handleOnline = () => setIsOnline(true);
+                const handleOffline = () => setIsOnline(false);
+                window.addEventListener("online", handleOnline);
+                window.addEventListener("offline", handleOffline);
+
+                let unsubscribeFirebase = null;
+                if (typeof firebase !== "undefined" && firebase.database) {
+                    const connectedRef = firebase.database().ref(".info/connected");
+                    const listener = connectedRef.on("value", (snap) => {
+                        setIsOnline(snap.val() === true);
+                    });
+                    unsubscribeFirebase = () => connectedRef.off("value", listener);
                 }
-                if (screen === 'checkout' && cart.length === 0) {
-                    setScreen('scanning');
-                }
-            }, [screen, scannedItem, cart, setScreen]);
-            
-            // --- FIREBASE SYNC EFFECT ---
+
+                return () => {
+                    window.removeEventListener("online", handleOnline);
+                    window.removeEventListener("offline", handleOffline);
+                    if (unsubscribeFirebase) unsubscribeFirebase();
+                };
+            }, []);
+            const [scanNotice, setScanNotice] = useState('');
+
+            // Popups & Alerts
+            const [hasShown70Warning, setHasShown70Warning] = useState(false);
+            const [popupAlert, setPopupAlert] = useState(null); // null | 'warning70' | 'limit'
+            const [alertMessage, setAlertMessage] = useState('');
+            const [returnScreen, setReturnScreen] = useState(null);
+            const [scanOrigin, setScanOrigin] = useState('scanning');
+
+            // Quantity Keypad Overlay State
+            const [isQtyPadVisible, setIsQtyPadVisible] = useState(false);
+            const [qtyInputStr, setQtyInputStr] = useState('1');
+            const [editingCartItemId, setEditingCartItemId] = useState(null);
+
+            // Thank You 10-second countdown
+            const [thankYouSeconds, setThankYouSeconds] = useState(10);
+            const [checkoutAction, setCheckoutAction] = useState(null);
+            const [qrError, setQrError] = useState('');
+            const qrContainerRef = useRef(null);
+
+            // Barcode hardware scanner buffer
+            const scanBufferRef = useRef('');
+            const scanTimerRef = useRef(null);
+
+            // --- SYNC LIVE PRODUCTS FROM FIREBASE REALTIME DATABASE ---
             useEffect(() => {
                 const productsRef = db.ref('products');
                 productsRef.on('value', (snapshot) => {
                     const data = snapshot.val();
-                    const loadedProducts = [];
+                    const loaded = [];
                     if (data) {
                         Object.keys(data).forEach(key => {
-                            loadedProducts.push({
-                                id: key,
-                                name: data[key].name || 'Unknown',
-                                price: parseFloat(data[key].price) || 0,
-                                stock: data[key].stock || 'High Stock'
+                            const raw = data[key];
+                            const itemName = raw.name || raw.item_description || raw.description || 'Unknown Item';
+                            const itemPrice = parseFloat(raw.price !== undefined ? raw.price : raw.unit_price) || 0;
+                            loaded.push({
+                                id: String(raw.sku || key),
+                                name: itemName,
+                                price: itemPrice
                             });
                         });
                     }
-                    setProducts(loadedProducts);
+                    setProducts(loaded);
+                    setIsOnline(true);
+                }, (error) => {
+                    console.error("Firebase connection error:", error);
+                    setIsOnline(false);
                 });
+
                 return () => productsRef.off();
             }, []);
 
-            // Qty Pad State
-            const [isQtyPadVisible, setIsQtyPadVisible] = useState(false);
-            const [qtyInputStr, setQtyInputStr] = useState('1');
-
-            // --- DERIVED STATE ---
+            // --- DERIVED CALCULATIONS ---
+            const categoryBudgetTotal = CATEGORIES.reduce(
+                (sum, category) => sum + (parseFloat(categoryBudgets[category.key]) || 0),
+                0
+            );
+            const effectiveBudget = budgetMode === 'single'
+                ? budget
+                : budgetMode === 'category' ? categoryBudgetTotal : 0;
             const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            const getCategorySpent = (categoryKey) => cart
+                .filter(item => detectCategory(item.name).key === categoryKey)
+                .reduce((sum, item) => sum + (item.price * item.qty), 0);
 
-            // --- SPLASH SCREEN TIMERS ---
+
+            // --- AUTOMATIC BARCODE SCANNER LISTENER ON HOME SCREEN ---
             useEffect(() => {
-                if (screen === 'splash1') {
-                    const timer = setTimeout(() => setScreen('tutorial'), 2500);
-                    return () => clearTimeout(timer);
-                }
+                if (screen !== 'scanning' || popupAlert || isQtyPadVisible) return;
+
+                const handleKeyDown = (e) => {
+                    if (e.key === 'Enter') {
+                        const code = scanBufferRef.current.trim();
+                        scanBufferRef.current = '';
+                        if (code.length >= 4) {
+                            const found = products.find(i => i.id === code);
+                            if (found) {
+                                triggerItemScanned(found, 'scanning');
+                            } else {
+                                setScanNotice(`Barcode "${code}" not found in system.`);
+                            }
+                        }
+                        return;
+                    }
+                    if (e.key.length === 1) {
+                        scanBufferRef.current += e.key;
+                        clearTimeout(scanTimerRef.current);
+                        scanTimerRef.current = setTimeout(() => {
+                            scanBufferRef.current = '';
+                        }, 300);
+                    }
+                };
+
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [screen, popupAlert, isQtyPadVisible, products]);
+
+            // Auto-clear scanner notice after 3 seconds
+            useEffect(() => {
+                if (!scanNotice) return;
+                const timer = setTimeout(() => setScanNotice(''), 3000);
+                return () => clearTimeout(timer);
+            }, [scanNotice]);
+
+            // --- THANK YOU 10-SECOND COUNTDOWN & AUTO-RESET ---
+            useEffect(() => {
+                if (screen !== 'thank_you') return;
+                setThankYouSeconds(10);
+
+                const interval = setInterval(() => {
+                    setThankYouSeconds(prev => {
+                        if (prev <= 1) {
+                            clearInterval(interval);
+                            resetApp();
+                            return 0;
+                        }
+                        return prev - 1;
+                    });
+                }, 1000);
+
+                return () => clearInterval(interval);
             }, [screen]);
 
-            // --- THANK YOU TIMER ---
             useEffect(() => {
-                if (screen === 'thank_you') {
-                    const timer = setTimeout(() => {
-                        resetApp();
-                    }, 10000); // 10 seconds before auto restart
-                    return () => clearTimeout(timer);
-                }
-            }, [screen]);
+                if (checkoutAction !== 'qr') return;
 
-            // --- SEARCH EFFECT ---
+                const container = qrContainerRef.current;
+                const qrLibrary = window.qrcode;
+                if (!container || !qrLibrary) {
+                    setQrError('QR code generation is unavailable. Check the internet connection and try again.');
+                    return;
+                }
+
+                container.innerHTML = '';
+                try {
+                    const totalUnits = cart.reduce((total, item) => total + item.qty, 0);
+                    const itemLines = cart.map(item =>
+                        `${item.name.replace(/\s+/g, ' ').trim()}\t₱${item.price.toFixed(2)}\t${item.qty}\t₱${(item.price * item.qty).toFixed(2)}`
+                    ).join('\n\n');
+                    const receiptLines = [
+                        `totaling ₱${cartTotal.toFixed(2)} across ${totalUnits} total units:`,
+                        '',
+                        'Item Description\tUnit Price\tQty\tSubtotal',
+                        itemLines,
+                        '',
+                        `Total\t\t${totalUnits}\t₱${cartTotal.toFixed(2)}`
+                    ];
+
+                    qrLibrary.stringToBytes = qrLibrary.stringToBytesFuncs['UTF-8'];
+                    const qrCode = qrLibrary(0, 'L');
+                    qrCode.addData(receiptLines.join('\n'), 'Byte');
+                    qrCode.make();
+
+                    const cellSize = Math.max(1, Math.round(240 / (qrCode.getModuleCount() + 8)));
+                    const qrImage = document.createElement('img');
+                    qrImage.alt = 'QR code containing the plain-text CartPunch receipt';
+                    qrImage.className = 'block max-w-full h-auto';
+                    qrImage.src = qrCode.createDataURL(cellSize, 4);
+                    container.replaceChildren(qrImage);
+                    setQrError('');
+                } catch (error) {
+                    console.error('Receipt QR generation failed:', error);
+                    setQrError('This receipt is too large to encode. You can proceed and exit without a QR code.');
+                }
+
+                return () => {
+                    container.innerHTML = '';
+                };
+            }, [checkoutAction, cart, cartTotal]);
+
+            // --- MANUAL SEARCH FILTER ---
             useEffect(() => {
-                if (!manualInputValue) {
+                if (!manualInputValue.trim()) {
                     setSearchResults([]);
                     return;
                 }
-                const lowerVal = manualInputValue.toLowerCase();
-                const results = products.filter(item => {
-                    if (manualInputType === 'barcode') return item.id.includes(lowerVal);
-                    return item.name.toLowerCase().includes(lowerVal);
-                });
-                setSearchResults(results);
+                const lower = manualInputValue.toLowerCase();
+                const filtered = products.filter(item =>
+                    manualInputType === 'barcode'
+                        ? item.id.includes(lower)
+                        : item.name.toLowerCase().includes(lower)
+                );
+                setSearchResults(filtered);
             }, [manualInputValue, manualInputType, products]);
 
-            // --- DYNAMIC THEME ENGINE ---
+            // --- THEME ENGINE ---
             const defaultTheme = {
                 bg: 'bg-[#FFF9F5]',
                 primary: 'bg-orange-500',
@@ -324,9 +582,8 @@
             };
 
             const getThemeColors = () => {
-                const pct = (budgetMode && budget > 0) ? (cartTotal / budget) : 0;
-
-                if (pct >= 1) { // LIMIT REACHED: RED
+                const pct = (budgetMode !== 'none' && effectiveBudget > 0) ? (cartTotal / effectiveBudget) : 0;
+                if (pct >= 0.9) {
                     return {
                         bg: 'bg-red-50',
                         primary: 'bg-red-500',
@@ -344,73 +601,70 @@
                         hoverBorder: 'hover:border-red-500',
                         hoverText: 'group-hover:text-red-500'
                     };
-                } else if (pct >= 0.7) { // 70% REACHED: YELLOW
+                }
+                if (pct >= 0.7) {
                     return {
                         bg: 'bg-yellow-50',
                         primary: 'bg-yellow-500',
                         primaryHover: 'hover:bg-yellow-600',
                         textTitle: 'text-yellow-900',
-                        textValue: 'text-yellow-600',
+                        textValue: 'text-yellow-700',
                         iconBg: 'bg-yellow-100',
-                        iconColor: 'text-yellow-600',
-                        border: 'border-yellow-100',
-                        borderHighlight: 'border-yellow-200',
+                        iconColor: 'text-yellow-700',
+                        border: 'border-yellow-200',
+                        borderHighlight: 'border-yellow-300',
                         shadow: 'shadow-yellow-200',
                         softBg: 'bg-yellow-50',
                         laserBg: 'bg-yellow-400',
                         laserShadow: 'shadow-[0_0_20px_#facc15]',
                         hoverBorder: 'hover:border-yellow-500',
-                        hoverText: 'group-hover:text-yellow-500'
+                        hoverText: 'group-hover:text-yellow-600'
                     };
-                } else { // DEFAULT: NEUTRAL ORANGE
-                    return defaultTheme;
                 }
+                return defaultTheme;
             };
+
             const theme = getThemeColors();
 
-            // --- ACTIONS ---
-            const handleSimulateScan = () => {
-                if (products.length === 0) return;
-                const randomItem = products[Math.floor(Math.random() * products.length)];
-                setScannedItem(randomItem);
+            // --- CORE ACTIONS ---
+            const resetApp = () => {
+                setCart([]);
+                setBudgetMode('none');
+                setBudget(0);
+                setBudgetInputStr('');
+                setCategoryBudgets(mkDefaultCatBudgets());
+                setLastScannedCategory(null);
+                setScannedItem(null);
                 setItemQty(1);
-                setScanOrigin('scanning');
-                setScreen('item_scanned');
+                setManualInputValue('');
+                setIsKeyboardVisible(true);
+                setScanNotice('');
+                setHasShown70Warning(false);
+                setPopupAlert(null);
+                setAlertMessage('');
+                setReturnScreen(null);
+                setIsQtyPadVisible(false);
+                setEditingCartItemId(null);
+                setCheckoutAction(null);
+                setQrError('');
+                setScreen('splash1');
             };
 
-            const handleManualSearch = (e) => {
-                if (e) e.preventDefault();
-                setIsKeyboardVisible(false);
-            };
-
-            const selectItemFromSearch = (item) => {
+            const triggerItemScanned = (item, origin = 'scanning') => {
+                if (!item) return;
                 setScannedItem(item);
                 setItemQty(1);
-                setScanOrigin('manual_input');
+                setScanOrigin(origin);
                 setScreen('item_scanned');
             };
 
-            const handleAddToCart = () => {
-                const newItemTotal = scannedItem.price * itemQty;
-                const newCartTotal = cartTotal + newItemTotal;
-
-                if (budgetMode && newCartTotal > budget) {
-                    setPopupAlert('limit');
-                } else {
-                    addToCartState(scannedItem, itemQty);
-
-                    // Track which category was just punched
-                    const cat = detectCategory(scannedItem.name);
-                    setLastScannedCategory(cat.key);
-
-                    if (budgetMode && newCartTotal >= budget * 0.7 && !hasShown70Warning) {
-                        setHasShown70Warning(true);
-                        setPopupAlert('warning70');
-                        setScreen('scanning');
-                    } else {
-                        setScreen('scanning');
-                    }
+            const handleAutomaticDemoScan = () => {
+                if (products.length === 0) {
+                    setScanNotice('No items loaded from database yet.');
+                    return;
                 }
+                const randomItem = products[Math.floor(Math.random() * products.length)];
+                triggerItemScanned(randomItem, 'scanning');
             };
 
             const addToCartState = (item, qty) => {
@@ -422,107 +676,198 @@
                 }
             };
 
-            const handleRemoveFromCart = (itemId) => {
-                const newCart = cart.filter(item => item.id !== itemId);
-                setCart(newCart);
+            const handleAddToCart = () => {
+                if (!scannedItem) return;
+                const newItemTotal = scannedItem.price * itemQty;
+                const newCartTotal = cartTotal + newItemTotal;
 
-                const newTotal = newCart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-                if (budgetMode && budget > 0 && newTotal < budget * 0.7) {
+                // Check overall budget limit if active
+                if (budgetMode !== 'none' && effectiveBudget > 0 && newCartTotal > effectiveBudget) {
+                    setPopupAlert('limit');
+                    return;
+                }
+
+                addToCartState(scannedItem, itemQty);
+                setLastScannedCategory(detectCategory(scannedItem.name).key);
+
+                // Check 70% overall warning
+                if (budgetMode !== 'none' && effectiveBudget > 0 && newCartTotal >= effectiveBudget * 0.7 && !hasShown70Warning) {
+                    setHasShown70Warning(true);
+                    setAlertMessage('You have reached 70% of your total budget. Spend wisely!');
+                    setPopupAlert('warning70');
+                    setScreen('scanning');
+                    return;
+                }
+
+                setScreen('scanning');
+            };
+
+            const updateCartItemQty = (itemId, delta) => {
+                const updated = cart
+                    .map(item => item.id === itemId ? { ...item, qty: item.qty + delta } : item)
+                    .filter(item => item.qty > 0);
+                setCart(updated);
+
+                const newTotal = updated.reduce((s, i) => s + (i.price * i.qty), 0);
+                if (budgetMode !== 'none' && effectiveBudget > 0 && newTotal < effectiveBudget * 0.7) {
                     setHasShown70Warning(false);
                 }
             };
 
-            const resetApp = () => {
-                setCart([]);
-                setBudgetMode(false);
-                setBudget(0);
-                setBudgetInputStr('');
-                setScannedItem(null);
-                setItemQty(1);
-                setIsKeyboardVisible(true);
-                setHasShown70Warning(false);
-                setPopupAlert(null);
-                setIsQtyPadVisible(false);
-                setCategoryBudgets(mkDefaultCatBudgets());
-                setLastScannedCategory(null);
-                setScreen('splash1');
-            };
-
-            // --- KEYBOARD ACTIONS ---
-            const handleKeyPress = (key) => {
-                if (key === 'DEL') {
-                    setManualInputValue(prev => prev.slice(0, -1));
-                } else if (key === 'SPACE') {
-                    setManualInputValue(prev => prev + ' ');
-                } else if (key === 'ENTER') {
-                    handleManualSearch();
-                } else {
-                    setManualInputValue(prev => prev + key);
+            const handleRemoveFromCart = (itemId) => {
+                const newCart = cart.filter(item => item.id !== itemId);
+                setCart(newCart);
+                const newTotal = newCart.reduce((s, i) => s + (i.price * i.qty), 0);
+                if (budgetMode !== 'none' && effectiveBudget > 0 && newTotal < effectiveBudget * 0.7) {
+                    setHasShown70Warning(false);
                 }
             };
 
-            // --- SCREEN RENDERS ---
+            // --- PERSISTENT HEADER (ALL PAGES EXCEPT STARTUP & ENDING) ---
+            const showPersistentHeader = screen !== 'splash1' && screen !== 'thank_you';
 
-            // Screen 1: Splash 1
+            const TopHeader = () => {
+                const displayBudget = effectiveBudget;
+                const hasBudgetDisplay = budgetMode !== 'none';
+
+                return (
+                    <div className={`bg-white text-gray-800 pt-4 pb-3 px-5 flex justify-between items-center rounded-b-[1.5rem] shadow-sm border-b ${theme.border} z-20 relative shrink-0 transition-colors`}>
+                        {/* Left Side: Small CartPunch Logo & Small Name */}
+                        <div className="flex items-center space-x-2 shrink-0">
+                            <div className={`w-7 h-7 ${theme.iconBg} rounded-lg flex items-center justify-center transition-colors`}>
+                                <ScanLine size={16} className={theme.iconColor} />
+                            </div>
+                            <span className={`text-base font-black tracking-tight ${theme.textTitle} transition-colors`}>
+                                CartPunch
+                            </span>
+                        </div>
+
+                        {/* Right Side: Online/Offline + Sideways Battery on top, Total Budget below */}
+                        <div className="flex flex-col items-end min-w-0 ml-2">
+                            <div className="flex items-center space-x-2">
+                                <button
+                                    className={`flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border transition-colors ${isOnline
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                        : 'bg-gray-100 text-gray-500 border-gray-200'
+                                        }`}
+                                >
+                                    <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`}></span>
+                                    <span>{isOnline ? 'Online' : 'Offline'}</span>
+                                </button>
+                                <SidewaysBattery />
+                            </div>
+
+                            {hasBudgetDisplay && (
+                                <div className="flex items-baseline space-x-1.5 mt-1">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Budget:</span>
+                                    <span className={`text-sm font-black ${theme.textValue} transition-colors`}>
+                                        ₱{formatNumberWithCommas(displayBudget.toFixed(2))}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            };
+
+            // =========================================================================
+            // SCREEN 1: STARTUP LOGO SCREEN (Stays until user touches anywhere)
+            // =========================================================================
             const renderSplash1 = () => (
-                <div className="flex flex-col items-center justify-center h-full bg-[#FFF9F5] text-gray-800 animate-pulse">
-                    <div className="w-28 h-28 bg-orange-500 rounded-[35px] flex items-center justify-center mb-6 shadow-xl shadow-orange-200">
+                <div
+                    onClick={() => setScreen('privacy_consent')}
+                    className="flex flex-col items-center justify-center h-full bg-[#FFF9F5] text-gray-800 cursor-pointer select-none px-6"
+                >
+                    <div className="w-28 h-28 bg-orange-500 rounded-[35px] flex items-center justify-center mb-6 shadow-xl shadow-orange-200 animate-pulse">
                         <ScanLine size={56} className="text-white" />
                     </div>
                     <h1 className="text-4xl font-bold tracking-wider text-orange-950">CartPunch</h1>
                     <p className="text-orange-600/80 mt-2 tracking-widest text-sm uppercase font-bold">System</p>
+                    <p className="mt-14 text-xs font-bold uppercase tracking-widest text-orange-500/80 animate-bounce">
+                        Touch anywhere to start
+                    </p>
                 </div>
             );
 
-            // Screen 2: Tutorial Manual
-            const renderTutorial = () => (
-                <div className="flex flex-col h-full bg-orange-50 overflow-hidden relative">
-                    <div className="absolute top-32 -left-12 text-orange-500/5 rotate-[-15deg] pointer-events-none">
-                        <ShoppingCart size={220} />
-                    </div>
-                    <div className="absolute bottom-40 -right-16 text-orange-500/5 rotate-[15deg] pointer-events-none">
-                        <Barcode size={280} />
-                    </div>
-                    <div className="absolute top-1/4 right-8 text-orange-500/10 font-black text-8xl pointer-events-none">1</div>
-                    <div className="absolute top-1/2 left-6 text-orange-500/10 font-black text-9xl pointer-events-none">2</div>
-                    <div className="absolute bottom-1/3 right-10 text-orange-500/10 font-black text-8xl pointer-events-none">3</div>
-
-                    <div className="bg-orange-500 pt-10 pb-6 px-8 rounded-b-[2.5rem] shadow-md relative z-10 shrink-0">
-                        <div className="flex items-center justify-center space-x-3">
-                            <BookOpen className="text-white" size={32} />
-                            <h2 className="text-2xl font-bold text-white tracking-wide text-center">How to Use CartPunch</h2>
+            // =========================================================================
+            // SCREEN 1B: DATA PRIVACY & AUTO-DELETION NOTICE (Centered + Bottom Buttons)
+            // =========================================================================
+            const renderPrivacyConsent = () => (
+                <div className="flex flex-col flex-1 min-h-0 bg-[#FFF9F5]">
+                    {/* Centered Data Deletion Statement */}
+                    <div className="flex-1 flex flex-col items-center justify-center px-7 text-center overflow-y-auto">
+                        <div className="w-20 h-20 bg-white shadow-sm border border-orange-100 rounded-full flex items-center justify-center mb-5 shrink-0">
+                            <ShieldCheck size={42} className="text-orange-500" />
+                        </div>
+                        <h2 className="text-2xl font-extrabold text-gray-800 mb-3">Privacy & Data Notice</h2>
+                        <div className="bg-white/95 p-6 rounded-[1.75rem] shadow-sm border border-orange-100 max-w-sm w-full">
+                            <p className="text-base font-bold text-gray-800 leading-relaxed">
+                                All the data collected will be automatically deleted right after you use the device.
+                            </p>
+                            <p className="text-xs font-medium text-gray-500 mt-3 leading-relaxed">
+                                Your scanned items, budget settings, and cart records are cleared immediately once your session finishes.
+                            </p>
                         </div>
                     </div>
 
-                    <div className="flex-1 flex flex-col justify-center px-6 pt-4 pb-6 z-10 relative">
-                        <div className="space-y-3 mb-auto mt-2">
+                    {/* Disagree & Agree Buttons pinned at the very bottom */}
+                    <div className="mt-auto bg-white p-4 rounded-t-[2rem] shadow-[0_-8px_30px_rgba(0,0,0,0.05)] border-t border-orange-100 flex space-x-3 shrink-0">
+                        <button
+                            onClick={() => setScreen('splash1')}
+                            className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-2xl font-bold text-base hover:bg-gray-200 active:scale-95 transition-all"
+                        >
+                            Disagree
+                        </button>
+                        <button
+                            onClick={() => setScreen('tutorial')}
+                            className="flex-1 py-4 bg-orange-500 text-white rounded-2xl font-bold text-base shadow-lg shadow-orange-200 hover:bg-orange-600 active:scale-95 transition-all"
+                        >
+                            Agree
+                        </button>
+                    </div>
+                </div>
+            );
+
+            // =========================================================================
+            // SCREEN 2: CONCISE INSTRUCTIONS
+            // =========================================================================
+            const renderTutorial = () => (
+                <div className="flex flex-col flex-1 min-h-0 bg-orange-50 overflow-hidden relative">
+                    <div className="bg-orange-500 py-4 px-6 rounded-b-[2rem] shadow-md relative z-10 shrink-0">
+                        <div className="flex items-center justify-center space-x-2.5">
+                            <BookOpen className="text-white" size={24} />
+                            <h2 className="text-xl font-bold text-white tracking-wide text-center">Quick Guide</h2>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 flex flex-col justify-between px-5 py-4 z-10 relative overflow-y-auto">
+                        <div className="space-y-2.5">
                             {[
-                                "Set your limit budget.",
-                                "Scan the item barcode to the Barcode Scanner Module.",
-                                "If scanning doesn't work, input the item barcode number or the name of the item.",
-                                "Add your selected items to the cart. You can easily adjust quantities or remove items as needed.",
-                                "Review your final cart summary and complete your checkout. Happy shopping!"
+                                "Choose an overall or category budget, or skip.",
+                                "Scan items automatically with the barcode scanner or use Manual Search.",
+                                "Adjust item quantities when scanned or inside Your Cart.",
+                                "Review your list in Finish Up and complete checkout."
                             ].map((step, i) => (
-                                <div key={i} className="flex items-start space-x-4 bg-white/90 backdrop-blur-sm p-3.5 rounded-2xl shadow-sm border border-orange-100">
-                                    <div className="bg-orange-100 text-orange-600 font-black w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-inner">
+                                <div key={i} className="flex items-center space-x-3 bg-white/95 p-3 rounded-2xl shadow-sm border border-orange-100">
+                                    <div className="bg-orange-100 text-orange-600 font-black w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-sm">
                                         {i + 1}
                                     </div>
-                                    <p className="text-[13px] font-bold text-gray-700 leading-snug pt-1">
+                                    <p className="text-xs font-bold text-gray-700 leading-snug">
                                         {step}
                                     </p>
                                 </div>
                             ))}
                         </div>
 
-                        <div className="mt-4 bg-white/90 backdrop-blur-sm p-4 rounded-2xl border border-blue-100 shadow-sm shrink-0">
-                            <p className="text-blue-800 font-bold text-[11px] text-center italic leading-relaxed uppercase tracking-wider">
-                                Offline? No problem! Your cart automatically saves your items so your shopping trip stays on track!
+                        <div className="mt-3 bg-white/90 p-3 rounded-2xl border border-blue-100 shadow-sm shrink-0">
+                            <p className="text-blue-800 font-bold text-[11px] text-center leading-snug">
+                                Offline? CartPunch saves your items locally so your trip stays on track.
                             </p>
                         </div>
 
                         <button
                             onClick={() => setScreen('budget_prompt')}
-                            className="w-full mt-4 py-5 bg-orange-500 text-white rounded-[1.5rem] font-bold text-xl shadow-lg shadow-orange-200 hover:bg-orange-600 transition-colors shrink-0"
+                            className="w-full mt-3 py-4 bg-orange-500 text-white rounded-2xl font-bold text-lg shadow-lg shadow-orange-200 hover:bg-orange-600 active:scale-95 transition-all shrink-0"
                         >
                             Understood
                         </button>
@@ -530,25 +875,47 @@
                 </div>
             );
 
-            // Screen 3: Budget Prompt
+            // =========================================================================
+            // SCREEN 3: BUDGET CHOICE (3 OPTIONS)
+            // =========================================================================
             const renderBudgetPrompt = () => (
-                <div className="flex flex-col h-full bg-[#FFF9F5] items-center justify-center px-8 transition-colors">
-                    <div className="w-24 h-24 bg-white shadow-sm border border-orange-100 rounded-full flex items-center justify-center mb-8">
-                        <ShoppingCart size={48} className="text-orange-500" />
+                <div className="flex flex-col flex-1 min-h-0 bg-[#FFF9F5] items-center justify-center px-6 py-4 overflow-y-auto">
+                    <div className="w-20 h-20 bg-white shadow-sm border border-orange-100 rounded-full flex items-center justify-center mb-5 shrink-0">
+                        <ShoppingCart size={40} className="text-orange-500" />
                     </div>
-                    <h2 className="text-3xl font-bold text-center mb-3 text-gray-800">Set a Budget?</h2>
-                    <p className="text-gray-500 text-center mb-12 text-lg">Would you like to set a budget per category for your shopping today?</p>
+                    <h2 className="text-2xl font-bold text-center mb-2 text-gray-800">Set a Budget?</h2>
+                    <p className="text-gray-500 text-center mb-7 text-sm max-w-xs">
+                        Track spending with one overall limit or separate category budgets.
+                    </p>
 
-                    <div className="w-full space-y-4 max-w-sm">
+                    <div className="w-full space-y-3 max-w-sm">
                         <button
-                            onClick={() => { setBudgetMode(true); setScreen('budget_allocate'); }}
-                            className="w-full py-5 bg-orange-500 text-white rounded-2xl font-bold text-xl shadow-lg shadow-orange-200 hover:bg-orange-600 transition-colors"
+                            onClick={() => {
+                                setBudgetMode('single');
+                                setBudgetInputStr(budget > 0 ? budget.toString() : '');
+                                setScreen('budget_input');
+                            }}
+                            className="w-full py-4 bg-orange-500 text-white rounded-2xl font-bold text-base shadow-lg shadow-orange-200 hover:bg-orange-600 active:scale-95 transition-all"
                         >
-                            Yes, set a budget
+                            Set One-Time Budget
                         </button>
+
                         <button
-                            onClick={() => { setBudgetMode(false); setScreen('scanning'); }}
-                            className="w-full py-5 bg-white text-gray-600 border-2 border-gray-200 rounded-2xl font-bold text-xl hover:bg-gray-50 transition-colors"
+                            onClick={() => {
+                                setBudgetMode('category');
+                                setScreen('budget_allocate');
+                            }}
+                            className="w-full py-4 bg-white text-orange-600 border-2 border-orange-200 rounded-2xl font-bold text-base hover:bg-orange-50 active:scale-95 transition-all"
+                        >
+                            Set Category Budgets
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                setBudgetMode('none');
+                                setScreen('scanning');
+                            }}
+                            className="w-full py-4 bg-white text-gray-600 border-2 border-gray-200 rounded-2xl font-bold text-base hover:bg-gray-50 active:scale-95 transition-all"
                         >
                             No, skip for now
                         </button>
@@ -556,269 +923,232 @@
                 </div>
             );
 
-            // Screen 4: Budget Allocation by Category
             const renderBudgetAllocate = () => {
-                const totalAllocated = CATEGORIES.reduce((sum, cat) => {
-                    const val = parseFloat(categoryBudgets[cat.key] || '0') || 0;
-                    return sum + val;
-                }, 0);
-
-                const handleCatInput = (catKey, value) => {
-                    // Only allow numeric with optional dot
-                    const clean = value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                    setCategoryBudgets(prev => ({ ...prev, [catKey]: clean }));
-                };
-
-                const handleFinalize = () => {
-                    if (totalAllocated <= 0) return;
-                    setBudget(totalAllocated);
-                    setHasShown70Warning(false);
-                    setScreen('scanning');
-                };
+                const totalAllocated = CATEGORIES.reduce(
+                    (sum, category) => sum + (parseFloat(categoryBudgets[category.key]) || 0),
+                    0
+                );
 
                 return (
-                    <div className="flex flex-col h-full bg-[#FFF9F5] overflow-hidden">
-                        {/* TOP HEADER — logo + brand */}
-                        <div className="bg-orange-500 pt-10 pb-6 px-8 rounded-b-[2rem] shadow-md shrink-0 flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                                <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center">
-                                    <ScanLine size={26} className="text-white" />
-                                </div>
-                                <h1 className="text-2xl font-black text-white tracking-wide">CartPunch</h1>
-                            </div>
-                            <button onClick={() => setScreen('budget_prompt')} className="p-2.5 bg-white/20 hover:bg-white/30 rounded-full text-white transition-colors">
+                    <div className="flex flex-col flex-1 min-h-0 bg-[#FFF9F5] overflow-hidden">
+                        <div className="px-6 pt-4 shrink-0">
+                            <button
+                                onClick={() => setScreen(returnScreen || 'budget_prompt')}
+                                className="p-2.5 bg-white rounded-full shadow-sm text-gray-600 border border-orange-50 w-fit"
+                            >
                                 <ArrowLeft size={22} />
                             </button>
                         </div>
-
-                        {/* LOWER HEADER — title + total */}
-                        <div className="px-8 pt-5 pb-3 shrink-0">
-                            <h2 className="text-2xl font-black text-gray-800 mb-0.5">Set Category Budgets</h2>
-                            <p className="text-sm text-gray-500 font-medium">Allocate how much to spend per category. Scroll down to fill in all categories.</p>
-                            <div className="mt-3 flex items-center justify-between bg-white border border-orange-200 rounded-2xl px-5 py-3 shadow-sm">
-                                <span className="text-sm font-bold text-gray-500 uppercase tracking-wider">Total Budget</span>
-                                <span className={`text-2xl font-black ${totalAllocated > 0 ? 'text-orange-500' : 'text-gray-300'}`}>
+                        <div className="px-6 pt-4 pb-3 shrink-0">
+                            <h2 className="text-2xl font-bold mb-1 text-gray-800">Category Budgets</h2>
+                            <p className="text-gray-500 text-sm">Set an optional spending limit for each category.</p>
+                            <div className="mt-3 flex items-center justify-between bg-white border border-orange-200 rounded-2xl px-4 py-3">
+                                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Budget</span>
+                                <span className="text-xl font-black text-orange-500">
                                     ₱{formatNumberWithCommas(totalAllocated.toFixed(2))}
                                 </span>
                             </div>
                         </div>
-
-                        {/* SCROLLABLE CATEGORY ROWS */}
-                        <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-3">
-                            {CATEGORIES.map(cat => {
-                                const val = categoryBudgets[cat.key] || '';
-                                return (
-                                    <div key={cat.key} className="bg-white rounded-2xl border border-orange-100 shadow-sm px-5 py-4 flex items-center space-x-4">
-                                        <span className="text-2xl shrink-0">{cat.emoji}</span>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-bold text-gray-700 truncate">{cat.label}</p>
-                                        </div>
-                                        <div className="flex items-center bg-orange-50 border border-orange-200 rounded-xl px-3 py-2 w-28 shrink-0">
-                                            <span className="text-orange-400 font-bold mr-1 text-sm">₱</span>
-                                            <input
-                                                type="number"
-                                                inputMode="decimal"
-                                                placeholder="0"
-                                                value={val}
-                                                onChange={e => handleCatInput(cat.key, e.target.value)}
-                                                className="w-full bg-transparent text-right text-base font-black text-gray-800 outline-none placeholder-gray-300"
-                                            />
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                        <div className="flex-1 overflow-y-auto px-6 pb-3 space-y-2">
+                            {CATEGORIES.map(category => (
+                                <label key={category.key} className="bg-white rounded-2xl border border-orange-100 px-4 py-3 flex items-center space-x-3">
+                                    <span className="text-xl">{category.emoji}</span>
+                                    <span className="flex-1 min-w-0 text-sm font-bold text-gray-700">{category.label}</span>
+                                    <span className="flex items-center bg-orange-50 border border-orange-200 rounded-xl px-2.5 py-2 w-28">
+                                        <span className="text-orange-400 font-bold mr-1 text-sm">₱</span>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            inputMode="decimal"
+                                            placeholder="0"
+                                            value={categoryBudgets[category.key]}
+                                            onChange={event => setCategoryBudgets(previous => ({
+                                                ...previous,
+                                                [category.key]: event.target.value.replace(/[^0-9.]/g, '')
+                                            }))}
+                                            className="w-full bg-transparent text-right text-sm font-black text-gray-800 outline-none placeholder-gray-300"
+                                        />
+                                    </span>
+                                </label>
+                            ))}
                         </div>
-
-                        {/* FINALIZE BUTTON */}
-                        <div className="px-6 pb-6 pt-3 shrink-0 bg-[#FFF9F5] border-t border-orange-100">
+                        <div className="px-6 pb-5 pt-3 shrink-0 bg-[#FFF9F5] border-t border-orange-100">
                             <button
-                                onClick={handleFinalize}
-                                className={`w-full py-5 rounded-2xl font-bold text-xl transition-all shadow-lg ${
+                                onClick={() => {
+                                    if (totalAllocated <= 0) return;
+                                    setBudget(totalAllocated);
+                                    setBudgetMode('category');
+                                    setLastScannedCategory(null);
+                                    setHasShown70Warning(false);
+                                    setScreen(returnScreen || 'scanning');
+                                    setReturnScreen(null);
+                                }}
+                                disabled={totalAllocated <= 0}
+                                className={`w-full py-4 rounded-2xl font-bold text-lg transition-all ${
                                     totalAllocated > 0
-                                        ? 'bg-orange-500 text-white shadow-orange-200 hover:bg-orange-600'
+                                        ? 'bg-orange-500 text-white shadow-lg shadow-orange-200 hover:bg-orange-600'
                                         : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                 }`}
                             >
-                                Finalize Budget — ₱{formatNumberWithCommas(totalAllocated.toFixed(2))}
+                                Confirm Category Budgets
                             </button>
                         </div>
                     </div>
                 );
             };
 
-            // Header component used in scanning screens
-            const TopHeader = () => (
-                <div className={`bg-white text-gray-800 pt-8 pb-5 px-8 flex justify-between items-center rounded-b-[2rem] shadow-sm border-b ${theme.border} z-10 relative transition-colors`}>
-                    <div className="flex items-center space-x-3 shrink-0">
-                        <div className={`w-10 h-10 ${theme.iconBg} rounded-xl flex items-center justify-center transition-colors`}>
-                            <ScanLine size={24} className={theme.iconColor} />
-                        </div>
-                        <h1 className={`text-2xl font-black tracking-wide ${theme.textTitle} transition-colors`}>CartPunch</h1>
-                    </div>
-                    {budgetMode && (
-                        <div className="text-right flex flex-col items-end min-w-0 flex-1 ml-4">
-                            <div className="flex items-center justify-end w-full mb-0.5 space-x-1.5">
-                                <p className="text-sm font-semibold text-gray-400 uppercase tracking-wider shrink-0">Budget</p>
-                                <button
-                                    onClick={() => {
-                                        setReturnScreen(screen);
-                                        setScreen('budget_allocate');
-                                    }}
-                                    title="Edit Budget"
-                                    className={`p-1 rounded-md bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors`}
-                                >
-                                    <Pencil size={12} />
-                                </button>
-                            </div>
-                            <p className={`${theme.textValue} font-black text-xl transition-colors truncate w-full text-right`}>₱{formatNumberWithCommas(budget.toFixed(2))}</p>
-                        </div>
-                    )}
-                </div>
-            );
+            // =========================================================================
+            // SCREEN 4: ONE-TIME MAX BUDGET INPUT
+            // =========================================================================
+            const renderBudgetInput = () => {
+                const budgetNumericKeys = [
+                    ['1', '2', '3'],
+                    ['4', '5', '6'],
+                    ['7', '8', '9'],
+                    ['', '0', 'DEL']
+                ];
 
-            // Screen 5 & 7: Scanning Idle
-            const renderScanning = () => {
-                // Categories that have a budget allocated
-                const allocatedCats = CATEGORIES.filter(cat => {
-                    const alloc = parseFloat(categoryBudgets[cat.key] || '0') || 0;
-                    return alloc > 0;
-                });
-
-                // Build display: if lastScannedCategory exists, show it highlighted first, then rest
-                const activeCat = lastScannedCategory
-                    ? CATEGORIES.find(c => c.key === lastScannedCategory)
-                    : null;
+                const handleBudgetKey = (key) => {
+                    if (key === 'DEL') {
+                        setBudgetInputStr(prev => prev.slice(0, -1));
+                    } else if (key !== '') {
+                        if (budgetInputStr.length >= 8) return;
+                        setBudgetInputStr(prev => prev + key);
+                    }
+                };
 
                 return (
-                    <div className={`flex flex-col h-full ${theme.bg} relative transition-colors duration-500`}>
-                        <TopHeader />
-
-                        <div className="flex-1 flex flex-col items-center p-6 gap-4 overflow-hidden">
-                            {/* Scan Area — compact when budgetMode is on */}
-                            <div
-                                onClick={handleSimulateScan}
-                                className={`w-full rounded-[2.5rem] border-4 border-dashed ${theme.borderHighlight} flex flex-col items-center justify-center bg-white shadow-sm relative overflow-hidden cursor-pointer ${theme.hoverBorder} transition-colors group ${budgetMode ? 'h-[140px]' : 'flex-1 max-w-[340px] aspect-square animate-float-up'}`}
+                    <div className={`flex flex-col flex-1 min-h-0 ${defaultTheme.bg}`}>
+                        <div className="px-6 pt-4 shrink-0">
+                            <button
+                                onClick={() => setScreen(returnScreen || 'budget_prompt')}
+                                className="p-2.5 bg-white rounded-full shadow-sm text-gray-600 border border-orange-50 w-fit"
                             >
-                                <div className={`absolute top-0 left-0 w-full h-1.5 ${theme.laserBg} opacity-75 ${theme.laserShadow} animate-[scan_2s_ease-in-out_infinite] transition-colors`}></div>
-                                <Barcode size={budgetMode ? 44 : 100} className={`text-gray-300 ${theme.hoverText} transition-colors ${budgetMode ? 'mb-2' : 'mb-6'} animate-pulse`} />
-                                <p className={`text-gray-600 font-bold text-center px-4 leading-tight ${budgetMode ? 'text-base' : 'text-2xl'}`}>Waiting for item to be Scanned</p>
-                            </div>
-
-                            {/* Category Budget Tracker — only when budget mode on & categories set */}
-                            {budgetMode && allocatedCats.length > 0 && (
-                                <div className="w-full flex-1 overflow-hidden flex flex-col min-h-0">
-                                    <div className="flex items-center justify-between mb-2 shrink-0">
-                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Category Tracker</p>
-                                        {activeCat && (
-                                            <span className={`text-xs font-bold px-2.5 py-1 rounded-full bg-orange-100 text-orange-600`}>
-                                                Last: {activeCat.emoji} {activeCat.label}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="overflow-y-auto hide-scrollbar space-y-2 flex-1">
-                                        {/* Highlight last scanned category first */}
-                                        {activeCat && (() => {
-                                            const alloc = parseFloat(categoryBudgets[activeCat.key] || '0') || 0;
-                                            const spent = getCategorySpent(activeCat.key);
-                                            const remaining = alloc - spent;
-                                            const pct = alloc > 0 ? Math.min(spent / alloc, 1) : 0;
-                                            const isOver = remaining < 0;
-                                            return (
-                                                <div className={`bg-orange-500 rounded-2xl px-4 py-3 text-white shadow-md shadow-orange-200`}>
-                                                    <div className="flex items-center justify-between mb-2">
-                                                        <div className="flex items-center space-x-2">
-                                                            <span className="text-xl">{activeCat.emoji}</span>
-                                                            <span className="text-sm font-black">{activeCat.label}</span>
-                                                        </div>
-                                                        <span className={`text-sm font-black ${isOver ? 'text-red-200' : 'text-white'}`}>
-                                                            ₱{formatNumberWithCommas(remaining.toFixed(2))} left
-                                                        </span>
-                                                    </div>
-                                                    {alloc > 0 && (
-                                                        <div className="bg-white/20 rounded-full h-1.5 overflow-hidden">
-                                                            <div className={`h-full rounded-full transition-all duration-500 ${isOver ? 'bg-red-300' : 'bg-white'}`} style={{ width: `${pct * 100}%` }}></div>
-                                                        </div>
-                                                    )}
-                                                    <div className="flex justify-between text-xs text-white/70 mt-1">
-                                                        <span>Spent: ₱{formatNumberWithCommas(spent.toFixed(2))}</span>
-                                                        {alloc > 0 && <span>Budget: ₱{formatNumberWithCommas(alloc.toFixed(2))}</span>}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })()}
-                                        {/* Other allocated categories */}
-                                        {allocatedCats.filter(cat => cat.key !== (activeCat ? activeCat.key : null)).map(cat => {
-                                            const alloc = parseFloat(categoryBudgets[cat.key] || '0') || 0;
-                                            const spent = getCategorySpent(cat.key);
-                                            const remaining = alloc - spent;
-                                            const pct = alloc > 0 ? Math.min(spent / alloc, 1) : 0;
-                                            const isOver = remaining < 0;
-                                            return (
-                                                <div key={cat.key} className="bg-white rounded-2xl border border-orange-100 shadow-sm px-4 py-3">
-                                                    <div className="flex items-center justify-between mb-1.5">
-                                                        <div className="flex items-center space-x-2">
-                                                            <span className="text-lg">{cat.emoji}</span>
-                                                            <span className="text-sm font-bold text-gray-700">{cat.label}</span>
-                                                        </div>
-                                                        <span className={`text-sm font-black ${isOver ? 'text-red-500' : 'text-orange-500'}`}>
-                                                            ₱{formatNumberWithCommas(remaining.toFixed(2))}
-                                                        </span>
-                                                    </div>
-                                                    {alloc > 0 && (
-                                                        <div className="bg-orange-100 rounded-full h-1.5 overflow-hidden">
-                                                            <div className={`h-full rounded-full transition-all duration-500 ${isOver ? 'bg-red-400' : 'bg-orange-400'}`} style={{ width: `${pct * 100}%` }}></div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Manual input button — when no budget mode show below scan area */}
-                            {!budgetMode && (
-                                <button
-                                    onClick={() => { setScreen('manual_input'); setIsKeyboardVisible(true); setManualInputValue(''); }}
-                                    className={`mt-4 flex items-center space-x-3 bg-white border border-gray-200 text-gray-700 px-8 py-4 rounded-full font-bold text-lg hover:${theme.softBg} ${theme.hoverText} hover:${theme.borderHighlight} shadow-sm transition-all shrink-0`}
-                                >
-                                    <Keyboard size={24} />
-                                    <span>Manual Input</span>
-                                </button>
-                            )}
+                                <ArrowLeft size={22} />
+                            </button>
                         </div>
 
-                        <div className={`bg-white px-6 py-5 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)] border-t ${theme.border} relative z-10 transition-colors`}>
-                            {budgetMode && (
-                                <button
-                                    onClick={() => { setScreen('manual_input'); setIsKeyboardVisible(true); setManualInputValue(''); }}
-                                    className={`w-full mb-3 flex items-center justify-center space-x-2 bg-white border border-gray-200 text-gray-600 py-3 rounded-2xl font-bold text-base hover:bg-gray-50 transition-all`}
-                                >
-                                    <Keyboard size={20} />
-                                    <span>Manual Input</span>
-                                </button>
-                            )}
-                            <div className="flex space-x-3">
-                                <button
-                                    onClick={() => setScreen('cart')}
-                                    className={`flex-1 py-4 ${theme.softBg} ${theme.textValue} rounded-2xl font-bold text-base flex items-center justify-center space-x-2 ${theme.hoverBorder} transition-colors border ${theme.borderHighlight}`}
-                                >
-                                    <ShoppingCart size={22} />
-                                    <span>Cart ({cart.length})</span>
-                                </button>
-                                <button
-                                    onClick={() => cart.length > 0 && setScreen('checkout')}
-                                    className={`flex-1 py-4 ${theme.primary} text-white rounded-2xl font-bold text-lg shadow-lg ${theme.shadow} ${theme.primaryHover} transition-colors ${cart.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                >
-                                    Finish Up
-                                </button>
+                        <div className="px-6 flex-1 flex flex-col justify-center pb-5 max-w-md mx-auto w-full min-h-0">
+                            <h2 className="text-2xl font-bold mb-1 text-gray-800">Max Budget</h2>
+                            <p className="text-gray-500 mb-4 text-sm">Enter your overall spending limit.</p>
+
+                            <div className="relative mb-5 shrink-0 flex items-center overflow-hidden rounded-2xl bg-white border-2 border-orange-100 focus-within:border-orange-500 shadow-sm px-5">
+                                <span className="pr-2 text-2xl font-bold text-orange-300">₱</span>
+                                <div className="flex flex-1 items-center overflow-hidden whitespace-nowrap">
+                                    <span className={`text-4xl font-bold py-4 outline-none cursor-default ${!budgetInputStr ? 'text-gray-300' : 'text-gray-800'}`}>
+                                        {budgetInputStr ? formatNumberWithCommas(budgetInputStr) : '0'}
+                                    </span>
+                                    <div className={`w-0.5 h-8 ${defaultTheme.primary} animate-pulse ml-1 shrink-0`}></div>
+                                </div>
                             </div>
+
+                            <div className="flex flex-col space-y-2 max-w-[300px] mx-auto mb-5 w-full shrink-0">
+                                {budgetNumericKeys.map((row, rowIndex) => (
+                                    <div key={rowIndex} className="flex justify-center space-x-2 w-full">
+                                        {row.map(key =>
+                                            key === '' ? (
+                                                <div key="blank" className="flex-1"></div>
+                                            ) : (
+                                                <button
+                                                    key={key}
+                                                    onClick={() => handleBudgetKey(key)}
+                                                    className={`h-12 flex-1 rounded-xl shadow-[0_2px_0_rgba(0,0,0,0.05)] active:scale-95 transition-all flex items-center justify-center text-xl font-bold border border-gray-100 ${key === 'DEL'
+                                                        ? 'bg-gray-100 text-gray-700'
+                                                        : 'bg-white text-gray-800 hover:bg-orange-50'
+                                                        }`}
+                                                >
+                                                    {key === 'DEL' ? <Delete size={20} /> : key}
+                                                </button>
+                                            )
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+
+                            <button
+                                onClick={() => {
+                                    const num = parseFloat(budgetInputStr);
+                                    if (num > 0) {
+                                        setBudget(num);
+                                        setBudgetMode('single');
+                                        setHasShown70Warning(false);
+                                        setScreen(returnScreen || 'scanning');
+                                        setReturnScreen(null);
+                                    }
+                                }}
+                                className={`w-full py-4 rounded-2xl font-bold text-lg transition-all shrink-0 ${parseFloat(budgetInputStr) > 0
+                                    ? 'bg-orange-500 text-white shadow-lg shadow-orange-200 hover:bg-orange-600'
+                                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                    }`}
+                            >
+                                Confirm Budget
+                            </button>
                         </div>
                     </div>
                 );
             };
 
-            // Screen 13: Manual Input with Custom Keyboard
+            // =========================================================================
+            // SCREEN 5: HOME PAGE (SCANNING + MANUAL SEARCH)
+            // =========================================================================
+            const renderScanning = () => {
+                return (
+                    <div className={`flex flex-col flex-1 min-h-0 ${theme.bg} relative transition-colors duration-500`}>
+                        <div className="flex-1 flex flex-col justify-center px-5 py-3 min-h-0 overflow-hidden">
+                            {scanNotice && (
+                                <div className="mb-2.5 px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold text-center shadow-2xs shrink-0">
+                                    {scanNotice}
+                                </div>
+                            )}
+                            <div className="flex flex-col items-center justify-center my-auto">
+                                    <div
+                                        onClick={handleAutomaticDemoScan}
+                                        className={`w-full max-w-[270px] aspect-square rounded-[2.5rem] border-4 border-dashed ${theme.borderHighlight} flex flex-col items-center justify-center bg-white shadow-sm relative overflow-hidden cursor-pointer ${theme.hoverBorder} transition-colors group animate-float-up`}
+                                    >
+                                        <div className={`absolute top-0 left-0 w-full h-1.5 ${theme.laserBg} opacity-80 ${theme.laserShadow} animate-scan-line`}></div>
+                                        <Barcode size={84} className={`text-gray-300 ${theme.hoverText} transition-colors mb-4 animate-pulse`} />
+                                        <p className="text-gray-700 font-bold text-lg text-center px-4 leading-snug">
+                                            Waiting for the item to be scanned
+                                        </p>
+                                    </div>
+
+                                    <button
+                                        onClick={() => {
+                                            setManualInputValue('');
+                                            setIsKeyboardVisible(true);
+                                            setScreen('manual_input');
+                                        }}
+                                        className="mt-6 w-full max-w-[270px] py-4 bg-white border-2 border-gray-200 text-gray-800 rounded-2xl font-extrabold text-base shadow-sm hover:border-orange-400 hover:text-orange-600 active:scale-95 transition-all flex items-center justify-center space-x-2.5"
+                                    >
+                                        <Search size={20} className="text-orange-500" />
+                                        <span>Manual Search</span>
+                                    </button>
+                                </div>
+                        </div>
+
+                        {/* Bottom Navigation Actions */}
+                        <div className={`bg-white p-4 rounded-t-[2rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)] flex justify-between space-x-3 border-t ${theme.border} relative z-10 shrink-0 transition-colors`}>
+                            <button
+                                onClick={() => setScreen('cart')}
+                                className={`flex-1 py-4 ${theme.softBg} ${theme.textValue} rounded-2xl font-bold text-base flex items-center justify-center space-x-2 ${theme.hoverBorder} transition-colors border ${theme.borderHighlight}`}
+                            >
+                                <ShoppingCart size={20} />
+                                <span>View Cart ({cart.reduce((s, i) => s + i.qty, 0)})</span>
+                            </button>
+                            <button
+                                onClick={() => setScreen('checkout')}
+                                className={`flex-1 py-4 ${theme.primary} text-white rounded-2xl font-bold text-base shadow-lg ${theme.shadow} ${theme.primaryHover} transition-colors`}
+                            >
+                                Finish Up
+                            </button>
+                        </div>
+                    </div>
+                );
+            };
+
+            // =========================================================================
+            // SCREEN 6: MANUAL SEARCH
+            // =========================================================================
             const renderManualInput = () => {
                 const numericKeys = [
                     ['1', '2', '3'],
@@ -833,115 +1163,164 @@
                     ['SPACE', 'ENTER']
                 ];
 
+                const handleKeyPress = (key) => {
+                    if (key === 'DEL') {
+                        setManualInputValue(prev => prev.slice(0, -1));
+                    } else if (key === 'SPACE') {
+                        setManualInputValue(prev => prev + ' ');
+                    } else if (key === 'ENTER') {
+                        setIsKeyboardVisible(false);
+                    } else {
+                        setManualInputValue(prev => prev + key);
+                    }
+                };
+
                 return (
-                    <div className={`flex flex-col h-full ${defaultTheme.bg} transition-colors`}>
-                        <div className={`bg-white pt-8 pb-5 px-6 flex items-center shadow-sm border-b ${defaultTheme.border} z-10 relative shrink-0 transition-colors`}>
-                            <button onClick={() => setScreen('scanning')} className="p-3 bg-gray-50 rounded-full text-gray-600 mr-4">
-                                <ArrowLeft size={24} />
+                    <div className={`flex flex-col flex-1 min-h-0 ${defaultTheme.bg}`}>
+                        <div className="px-5 pt-3 pb-2 flex items-center shrink-0">
+                            <button
+                                onClick={() => setScreen('scanning')}
+                                className="p-2.5 bg-white rounded-full text-gray-600 shadow-xs border border-orange-100 mr-3"
+                            >
+                                <ArrowLeft size={20} />
                             </button>
-                            <h2 className="text-2xl font-bold text-gray-800">Manual Search</h2>
+                            <h2 className="text-xl font-bold text-gray-800">Manual Search</h2>
                         </div>
 
-                        <div className="flex-1 flex flex-col pt-6 min-h-0 relative">
-                            <div className="px-6 mb-6 shrink-0">
-                                <div className="flex bg-gray-100/80 p-1.5 rounded-[1rem] border border-gray-200">
+                        <div className="flex-1 flex flex-col pt-1 min-h-0 relative">
+                            {/* Mode Toggle */}
+                            <div className="px-5 mb-3 shrink-0">
+                                <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200">
                                     <button
                                         onClick={() => { setManualInputType('barcode'); setManualInputValue(''); }}
-                                        className={`flex-1 py-3.5 text-base font-bold rounded-xl flex items-center justify-center space-x-2 transition-all ${manualInputType === 'barcode' ? `bg-white shadow-sm ${defaultTheme.textValue} border ${defaultTheme.borderHighlight}` : 'text-gray-500'}`}
+                                        className={`flex-1 py-2.5 text-sm font-bold rounded-lg flex items-center justify-center space-x-2 transition-all ${manualInputType === 'barcode'
+                                            ? 'bg-white shadow-xs text-orange-600 border border-orange-200'
+                                            : 'text-gray-500'
+                                            }`}
                                     >
-                                        <ScanLine size={18} />
+                                        <ScanLine size={16} />
                                         <span>Barcode No.</span>
                                     </button>
                                     <button
                                         onClick={() => { setManualInputType('name'); setManualInputValue(''); }}
-                                        className={`flex-1 py-3.5 text-base font-bold rounded-xl flex items-center justify-center space-x-2 transition-all ${manualInputType === 'name' ? `bg-white shadow-sm ${defaultTheme.textValue} border ${defaultTheme.borderHighlight}` : 'text-gray-500'}`}
+                                        className={`flex-1 py-2.5 text-sm font-bold rounded-lg flex items-center justify-center space-x-2 transition-all ${manualInputType === 'name'
+                                            ? 'bg-white shadow-xs text-orange-600 border border-orange-200'
+                                            : 'text-gray-500'
+                                            }`}
                                     >
-                                        <Type size={18} />
+                                        <Type size={16} />
                                         <span>Product Name</span>
                                     </button>
                                 </div>
                             </div>
 
-                            <div className="px-6 flex-1 flex flex-col min-h-0">
-                                <label className={`block ${defaultTheme.textValue} text-sm font-bold uppercase tracking-wider mb-2 shrink-0 transition-colors`}>
+                            <div className="px-5 flex-1 flex flex-col min-h-0">
+                                <label className="block text-orange-600 text-xs font-bold uppercase tracking-wider mb-1.5 shrink-0">
                                     {manualInputType === 'barcode' ? 'Enter Barcode Numbers' : 'Enter Product Name'}
                                 </label>
+
                                 <div
                                     onClick={() => setIsKeyboardVisible(true)}
-                                    className="relative shrink-0 mb-4 flex items-center overflow-hidden rounded-2xl bg-white border-2 border-orange-200 focus-within:border-orange-500 shadow-inner transition-colors px-5 cursor-text"
+                                    className="relative shrink-0 mb-3 flex items-center justify-start text-left overflow-hidden rounded-2xl bg-white border-2 border-orange-200 focus-within:border-orange-500 shadow-inner pl-3 pr-4 py-3.5 cursor-text"
                                 >
-                                    <div className="flex flex-1 items-center overflow-hidden whitespace-nowrap py-5">
-                                        <span className={`text-3xl font-bold text-gray-800 ${!manualInputValue ? 'text-gray-400' : ''}`}>
-                                            {manualInputValue || (manualInputType === 'barcode' ? 'e.g. 48060...' : 'e.g. Salsa')}
-                                        </span>
-                                        <div className={`w-0.5 h-10 ${defaultTheme.primary} animate-pulse ml-1 transition-colors shrink-0`}></div>
+                                    <div className="flex items-center justify-start w-full overflow-hidden whitespace-nowrap">
+                                        {manualInputValue ? (
+                                            <>
+                                                <span className="text-2xl font-bold text-gray-800 text-left">
+                                                    {manualInputValue}
+                                                </span>
+                                                <div className="w-0.5 h-8 bg-orange-500 animate-pulse ml-0.5 shrink-0"></div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="w-0.5 h-8 bg-orange-500 animate-pulse mr-1 shrink-0"></div>
+                                                <span className="text-2xl font-bold text-gray-300 text-left">
+                                                    {manualInputType === 'barcode' ? 'Enter barcode...' : 'Enter product name...'}
+                                                </span>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
 
-                                <div className={`overflow-y-auto bg-white rounded-2xl ${defaultTheme.borderHighlight} shadow-sm transition-all duration-300 ease-in-out flex flex-col ${searchResults.length > 0 ? 'border opacity-100 mb-4' : 'border-none opacity-0 h-0 overflow-hidden'} ${isKeyboardVisible ? 'max-h-[288px]' : 'flex-1 mb-8'}`}>
-                                    {searchResults.length > 0 && searchResults.map((item, index) => (
-                                        <button
-                                            key={item.id}
-                                            onClick={() => selectItemFromSearch(item)}
-                                            className={`w-full text-left p-4 border-b ${defaultTheme.softBg} hover:${defaultTheme.softBg} transition-colors flex justify-between items-center last:border-0 shrink-0`}
-                                        >
-                                            <div className="flex-1 pr-4 min-w-0">
-                                                <p className="font-bold text-gray-800 text-sm truncate">{item.name}</p>
-                                                <p className="text-xs text-gray-500 font-mono mt-0.5 truncate">{item.id}</p>
-                                            </div>
-                                            <div className={`${defaultTheme.iconBg} border ${defaultTheme.borderHighlight} px-3 py-1.5 rounded-xl shadow-sm shrink-0 ml-2 transition-colors max-w-[140px] flex items-center justify-center overflow-hidden`}>
-                                                <p className={`font-black ${defaultTheme.textValue} text-lg transition-colors truncate w-full text-center`}>₱{formatNumberWithCommas(item.price.toFixed(2))}</p>
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
+                                {manualInputValue.trim() !== '' && searchResults.length === 0 ? (
+                                    <div className="bg-white/90 rounded-2xl border border-orange-100 p-4 text-center text-xs font-bold text-gray-400 mb-3">
+                                        No matching items in the system.
+                                    </div>
+                                ) : (
+                                    <div className={`overflow-y-auto bg-white rounded-2xl border-orange-200 shadow-xs transition-all flex flex-col ${searchResults.length > 0 ? 'border opacity-100 mb-3 flex-1' : 'border-none opacity-0 h-0 overflow-hidden'
+                                        }`}>
+                                        {searchResults.map((item) => (
+                                            <button
+                                                key={item.id}
+                                                onClick={() => triggerItemScanned(item, 'manual_input')}
+                                                className="w-full text-left p-3.5 border-b border-orange-50 hover:bg-orange-50/70 transition-colors flex justify-between items-center last:border-0 shrink-0"
+                                            >
+                                                <div className="flex-1 pr-3 min-w-0">
+                                                    <p className="font-bold text-gray-800 text-xs truncate">{item.name}</p>
+                                                    <p className="text-[11px] text-gray-400 font-mono mt-0.5 truncate">{item.id}</p>
+                                                </div>
+                                                <div className="bg-orange-100 border border-orange-200 px-2.5 py-1 rounded-xl shrink-0">
+                                                    <p className="font-black text-orange-600 text-sm">
+                                                        ₱{formatNumberWithCommas(item.price.toFixed(2))}
+                                                    </p>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
+                            {/* Collapsible Custom Keyboard */}
                             <div className="mt-auto shrink-0 flex flex-col relative z-20">
-                                <div className="flex justify-end px-6 relative mb-[-1px] z-30">
+                                <div className="flex justify-end px-5 relative mb-[-1px] z-30">
                                     <button
                                         onClick={() => setIsKeyboardVisible(!isKeyboardVisible)}
-                                        className="bg-gray-300 text-gray-700 px-6 py-2 rounded-t-2xl flex items-center justify-center hover:bg-gray-400 transition-colors shadow-[0_-2px_4px_rgba(0,0,0,0.05)]"
+                                        className="bg-gray-300 text-gray-700 px-5 py-1.5 rounded-t-xl flex items-center justify-center hover:bg-gray-400 transition-colors"
                                     >
-                                        {isKeyboardVisible ? <ChevronDown size={24} /> : <ChevronUp size={24} />}
+                                        {isKeyboardVisible ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
                                     </button>
                                 </div>
 
-                                <div className={`bg-gray-200/60 border-t border-gray-300 transition-all duration-300 ease-in-out origin-bottom overflow-hidden ${isKeyboardVisible ? 'max-h-[350px] pb-8 pt-4 px-2 opacity-100' : 'max-h-0 pb-0 pt-0 px-2 opacity-0 border-transparent'}`}>
+                                <div className={`bg-gray-200/80 border-t border-gray-300 transition-all duration-300 overflow-hidden ${isKeyboardVisible ? 'max-h-[260px] pb-4 pt-3 px-2 opacity-100' : 'max-h-0 p-0 opacity-0 border-transparent'
+                                    }`}>
                                     {manualInputType === 'barcode' ? (
-                                        <div className="flex flex-col space-y-2 max-w-[320px] mx-auto">
+                                        <div className="flex flex-col space-y-1.5 max-w-[300px] mx-auto">
                                             {numericKeys.map((row, rowIndex) => (
-                                                <div key={rowIndex} className="flex justify-center space-x-2">
+                                                <div key={rowIndex} className="flex justify-center space-x-1.5">
                                                     {row.map(key => (
                                                         <button
                                                             key={key}
                                                             onClick={() => handleKeyPress(key)}
-                                                            className={`h-16 flex-1 rounded-xl shadow-[0_2px_0_rgba(0,0,0,0.1)] active:scale-95 active:translate-y-1 transition-all flex items-center justify-center text-2xl font-bold
-                                    ${key === 'ENTER' ? `${defaultTheme.primary} text-white shadow-md` :
-                                                                    key === 'DEL' ? 'bg-gray-300 text-gray-700 text-xl' :
-                                                                        'bg-white text-gray-800'}`}
+                                                            className={`h-11 flex-1 rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center text-lg font-bold ${key === 'ENTER'
+                                                                ? 'bg-orange-500 text-white'
+                                                                : key === 'DEL'
+                                                                    ? 'bg-gray-300 text-gray-700 text-sm'
+                                                                    : 'bg-white text-gray-800'
+                                                                }`}
                                                         >
-                                                            {key === 'DEL' ? <Delete size={24} /> : key === 'ENTER' ? 'Go' : key}
+                                                            {key === 'DEL' ? <Delete size={18} /> : key === 'ENTER' ? 'Go' : key}
                                                         </button>
                                                     ))}
                                                 </div>
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="flex flex-col space-y-2">
+                                        <div className="flex flex-col space-y-1.5">
                                             {qwertyRows.map((row, rowIndex) => (
-                                                <div key={rowIndex} className="flex justify-center space-x-1.5 w-full">
+                                                <div key={rowIndex} className="flex justify-center space-x-1 w-full">
                                                     {row.map(key => (
                                                         <button
                                                             key={key}
                                                             onClick={() => handleKeyPress(key)}
                                                             style={key === 'SPACE' ? { flex: 3 } : key === 'ENTER' ? { flex: 1.5 } : { flex: 1 }}
-                                                            className={`h-14 rounded-lg shadow-[0_2px_0_rgba(0,0,0,0.1)] active:scale-95 active:translate-y-1 transition-all flex items-center justify-center text-xl font-bold px-1
-                                    ${key === 'ENTER' ? `${defaultTheme.primary} text-white shadow-md` :
-                                                                    key === 'DEL' ? 'bg-gray-300 text-gray-700' :
-                                                                        'bg-white text-gray-800'}`}
+                                                            className={`h-10 rounded-lg shadow-xs active:scale-95 transition-all flex items-center justify-center text-sm font-bold px-1 ${key === 'ENTER'
+                                                                ? 'bg-orange-500 text-white'
+                                                                : key === 'DEL'
+                                                                    ? 'bg-gray-300 text-gray-700'
+                                                                    : 'bg-white text-gray-800'
+                                                                }`}
                                                         >
-                                                            {key === 'DEL' ? <Delete size={20} /> : key === 'ENTER' ? 'Search' : key === 'SPACE' ? 'Space' : key}
+                                                            {key === 'DEL' ? <Delete size={16} /> : key === 'ENTER' ? 'Search' : key === 'SPACE' ? 'Space' : key}
                                                         </button>
                                                     ))}
                                                 </div>
@@ -955,163 +1334,225 @@
                 );
             };
 
-            // Screen 6: Item Scanned
+            // =========================================================================
+            // SCREEN 7: ITEM SCANNED / QUANTITY ADJUSTMENT
+            // =========================================================================
             const renderItemScanned = () => {
                 if (!scannedItem) return null;
 
-                const getStockColor = (status) => {
-                    if (status === 'High Stock') return 'bg-green-500 text-white border-green-600 shadow-sm';
-                    if (status === 'Moderate Stock') return 'bg-yellow-400 text-yellow-900 border-yellow-500 shadow-sm';
-                    return 'bg-red-500 text-white border-red-600 shadow-sm';
-                };
-
                 return (
-                    <div className={`flex flex-col h-full ${theme.bg} relative transition-colors`}>
-                        <TopHeader />
+                    <div className={`flex flex-col flex-1 min-h-0 ${theme.bg} p-5 justify-center overflow-y-auto`}>
+                        <div className={`bg-white p-6 rounded-[2rem] shadow-xl ${theme.shadow} border ${theme.softBg} flex flex-col items-center relative`}>
+                            <button
+                                onClick={() => setScreen(scanOrigin)}
+                                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                                <X size={22} />
+                            </button>
 
-                        <div className="flex-1 p-8 flex flex-col justify-center pb-12">
-                            <div className={`bg-white p-8 rounded-[2.5rem] shadow-xl ${theme.shadow} border ${theme.softBg} flex flex-col items-center transition-colors relative`}>
+                            <h2 className="text-xl font-bold text-center mb-3 text-gray-800 leading-snug px-4">
+                                {scannedItem.name}
+                            </h2>
 
+                            <div className={`${theme.iconBg} border ${theme.borderHighlight} px-5 py-2 rounded-2xl mb-5`}>
+                                <p className={`text-3xl font-black ${theme.textValue}`}>
+                                    ₱{formatNumberWithCommas(scannedItem.price.toFixed(2))}
+                                </p>
+                            </div>
+
+                            {/* Quantity Selector */}
+                            <div className="flex items-center justify-between w-full max-w-[210px] bg-gray-50 rounded-2xl p-1.5 mb-5 border border-gray-100">
                                 <button
-                                    onClick={() => setScreen(scanOrigin)}
-                                    className="absolute top-5 right-5 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                                    onClick={() => setItemQty(Math.max(1, itemQty - 1))}
+                                    className="w-11 h-11 bg-white rounded-xl shadow-xs border border-gray-100 flex items-center justify-center text-gray-600 active:scale-95"
                                 >
-                                    <X size={28} />
-                                </button>
-
-                                <div className={`px-5 py-2 rounded-full text-sm font-bold border mb-8 ${getStockColor(scannedItem.stock)}`}>
-                                    {scannedItem.stock}
-                                </div>
-
-                                <h2 className="text-3xl font-bold text-center mb-4 text-gray-800 leading-tight">{scannedItem.name}</h2>
-                                <div className={`${theme.iconBg} border ${theme.borderHighlight} px-6 py-3 rounded-2xl shadow-sm mb-10 transition-colors w-full max-w-[85%] mx-auto overflow-hidden text-center`}>
-                                    <p className={`text-5xl font-black ${theme.textValue} transition-colors truncate w-full`}>₱{formatNumberWithCommas(scannedItem.price.toFixed(2))}</p>
-                                </div>
-
-                                <div className="flex items-center justify-between w-full max-w-[240px] bg-gray-50 rounded-[1.5rem] p-2 mb-10 border border-gray-100">
-                                    <button
-                                        onClick={() => setItemQty(Math.max(1, itemQty - 1))}
-                                        className="w-14 h-14 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center text-gray-600 active:scale-95 transition-transform"
-                                    >
-                                        <Minus size={24} />
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            setQtyInputStr(itemQty.toString());
-                                            setIsQtyPadVisible(true);
-                                        }}
-                                        className="text-3xl font-bold w-20 h-14 flex items-center justify-center text-gray-800 bg-white rounded-2xl shadow-sm border border-orange-200 hover:bg-orange-50 active:scale-95 transition-all"
-                                    >
-                                        {itemQty}
-                                    </button>
-                                    <button
-                                        onClick={() => setItemQty(itemQty + 1)}
-                                        className="w-14 h-14 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center text-gray-600 active:scale-95 transition-transform"
-                                    >
-                                        <Plus size={24} />
-                                    </button>
-                                </div>
-
-                                <div className="w-full flex justify-between items-center mb-8 px-4 text-gray-500 font-bold text-lg border-t border-dashed border-gray-200 pt-6 space-x-4">
-                                    <span className="shrink-0">Subtotal:</span>
-                                    <span className={`text-2xl ${theme.textValue} font-black ${theme.softBg} border ${theme.borderHighlight} px-4 py-1.5 rounded-xl transition-colors truncate max-w-[200px] text-right`}>₱{formatNumberWithCommas((scannedItem.price * itemQty).toFixed(2))}</span>
-                                </div>
-
-                                <button
-                                    onClick={handleAddToCart}
-                                    className={`w-full py-5 ${theme.primary} text-white rounded-2xl font-bold text-xl shadow-lg ${theme.shadow} ${theme.primaryHover} active:scale-95 transition-all`}
-                                >
-                                    Add to Cart
+                                    <Minus size={20} />
                                 </button>
                                 <button
-                                    onClick={() => setScreen(scanOrigin)}
-                                    className="w-full py-4 bg-gray-50 text-gray-500 border border-gray-100 rounded-2xl font-bold text-lg hover:bg-gray-100 transition-colors mt-3"
+                                    onClick={() => {
+                                        setEditingCartItemId(null);
+                                        setQtyInputStr(itemQty.toString());
+                                        setIsQtyPadVisible(true);
+                                    }}
+                                    className="text-2xl font-bold w-16 h-11 flex items-center justify-center text-gray-800 bg-white rounded-xl shadow-xs border border-orange-200 hover:bg-orange-50"
                                 >
-                                    Cancel
+                                    {itemQty}
+                                </button>
+                                <button
+                                    onClick={() => setItemQty(itemQty + 1)}
+                                    className="w-11 h-11 bg-white rounded-xl shadow-xs border border-gray-100 flex items-center justify-center text-gray-600 active:scale-95"
+                                >
+                                    <Plus size={20} />
                                 </button>
                             </div>
+
+                            <div className="w-full flex justify-between items-center mb-5 px-2 text-gray-500 font-bold text-base border-t border-dashed border-gray-200 pt-4">
+                                <span>Subtotal:</span>
+                                <span className={`text-xl ${theme.textValue} font-black ${theme.softBg} border ${theme.borderHighlight} px-3 py-1 rounded-xl`}>
+                                    ₱{formatNumberWithCommas((scannedItem.price * itemQty).toFixed(2))}
+                                </span>
+                            </div>
+
+                            <button
+                                onClick={handleAddToCart}
+                                className={`w-full py-4 ${theme.primary} text-white rounded-2xl font-bold text-lg shadow-lg ${theme.shadow} ${theme.primaryHover} active:scale-95 transition-all`}
+                            >
+                                Add to Cart
+                            </button>
+                            <button
+                                onClick={() => setScreen(scanOrigin)}
+                                className="w-full py-3 bg-gray-50 text-gray-500 border border-gray-100 rounded-2xl font-bold text-sm hover:bg-gray-100 transition-colors mt-2.5"
+                            >
+                                Cancel
+                            </button>
                         </div>
                     </div>
                 );
             };
 
-            // Screen 8 & 9: View Cart
+            // =========================================================================
+            // SCREEN 8: YOUR CART
+            // =========================================================================
             const renderCart = () => (
-                <div className={`flex flex-col h-full ${theme.bg} transition-colors`}>
-                    <div className={`bg-white pt-8 pb-5 px-8 shadow-sm border-b ${theme.border} z-10 relative flex flex-col transition-colors`}>
-                        <div className="flex items-center mb-5 shrink-0">
-                            <button onClick={() => setScreen('scanning')} className="p-3 bg-gray-50 rounded-full text-gray-600 mr-4">
-                                <ArrowLeft size={24} />
+                <div className={`flex flex-col flex-1 min-h-0 ${theme.bg}`}>
+                    <div className="px-5 pt-3 pb-2 shrink-0">
+                        <div className="flex items-center mb-2">
+                            <button
+                                onClick={() => setScreen('scanning')}
+                                className="p-2.5 bg-white rounded-full text-gray-600 shadow-xs border border-orange-100 mr-3"
+                            >
+                                <ArrowLeft size={20} />
                             </button>
-                            <h2 className="text-2xl font-bold text-gray-800">Your Cart</h2>
+                            <h2 className="text-xl font-bold text-gray-800">Your Cart</h2>
                         </div>
 
-                        {budgetMode && (
-                            <div className={`${theme.softBg} border ${theme.borderHighlight} p-5 rounded-2xl flex justify-between items-center mt-2 transition-colors space-x-4 shrink-0`}>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center space-x-2 mb-1">
-                                        <p className={`text-xs ${theme.textValue} font-bold uppercase tracking-wider transition-colors`}>Set Budget</p>
-                                        <button
-                                            onClick={() => {
-                                                setReturnScreen('cart');
-                                                setBudgetInputStr(budget.toString());
-                                                setScreen('budget_input');
-                                            }}
-                                            className={`p-1 rounded-md ${theme.iconBg} ${theme.iconColor} hover:opacity-80 transition-opacity`}
-                                            title="Edit Budget"
-                                        >
-                                            <Pencil size={12} />
-                                        </button>
-                                    </div>
-                                    <p className="text-2xl font-black text-gray-800 truncate w-full">₱{formatNumberWithCommas(budget.toFixed(2))}</p>
+                        {budgetMode !== 'none' && (
+                            <div className={`${theme.softBg} border ${theme.borderHighlight} px-4 py-3 rounded-2xl flex justify-between items-center`}>
+                                <div>
+                                    <p className={`text-[10px] ${theme.textValue} font-bold uppercase tracking-wider`}>Set Budget</p>
+                                    <p className="text-lg font-black text-gray-800">
+                                        ₱{formatNumberWithCommas(effectiveBudget.toFixed(2))}
+                                    </p>
                                 </div>
-                                <div className="text-right flex-1 min-w-0">
-                                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Remaining</p>
-                                    <p className={`text-xl font-black truncate w-full text-right ${budget - cartTotal < 0 ? 'text-red-500' : 'text-green-500'}`}>
-                                        ₱{formatNumberWithCommas((budget - cartTotal).toFixed(2))}
+                                <div className="text-right">
+                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Remaining</p>
+                                    <p className={`text-lg font-black ${effectiveBudget - cartTotal < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                                        ₱{formatNumberWithCommas((effectiveBudget - cartTotal).toFixed(2))}
                                     </p>
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-6 space-y-4 text-gray-800">
+                    <div className="flex-1 overflow-y-auto px-5 py-2 space-y-2.5">
+                        {budgetMode === 'category' && (
+                            <div className="bg-white rounded-2xl border border-orange-100 p-3 space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Category Spending</p>
+                                    {lastScannedCategory && (
+                                        <span className="text-[10px] font-bold text-orange-600">
+                                            Last: {CATEGORIES.find(category => category.key === lastScannedCategory).label}
+                                        </span>
+                                    )}
+                                </div>
+                                {CATEGORIES.filter(category => (parseFloat(categoryBudgets[category.key]) || 0) > 0).map(category => {
+                                    const allocated = parseFloat(categoryBudgets[category.key]) || 0;
+                                    const spent = getCategorySpent(category.key);
+                                    const progress = Math.min(spent / allocated, 1);
+                                    return (
+                                        <div key={category.key}>
+                                            <div className="flex justify-between text-xs mb-1">
+                                                <span className="font-semibold text-gray-700">{category.emoji} {category.label}</span>
+                                                <span className={`font-bold ${spent > allocated ? 'text-red-600' : 'text-orange-600'}`}>
+                                                    ₱{formatNumberWithCommas(spent.toFixed(2))} / ₱{formatNumberWithCommas(allocated.toFixed(2))}
+                                                </span>
+                                            </div>
+                                            <div className="h-1.5 bg-orange-100 rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full rounded-full ${spent > allocated ? 'bg-red-500' : 'bg-orange-400'}`}
+                                                    style={{ width: `${progress * 100}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                         {cart.length === 0 ? (
-                            <div className={`h-full flex flex-col items-center justify-center ${theme.textValue} opacity-60 transition-colors`}>
-                                <ShoppingCart size={64} className="mb-6" />
-                                <p className="text-xl font-bold">Your cart is empty</p>
+                            <div className={`h-full flex flex-col items-center justify-center ${theme.textValue} opacity-60`}>
+                                <ShoppingCart size={54} className="mb-4" />
+                                <p className="text-lg font-bold">Your cart is empty</p>
                             </div>
                         ) : (
                             cart.map((item) => (
-                                <div key={item.id} className={`bg-white p-5 rounded-2xl shadow-sm border ${theme.softBg} flex justify-between items-center transition-colors`}>
-                                    <div className="flex-1 pr-3 overflow-hidden">
-                                        <h3 className="font-bold text-gray-800 text-lg leading-tight mb-2 truncate">{item.name}</h3>
-                                        <p className="text-sm font-semibold text-gray-500 bg-gray-50 inline-block px-3 py-1 rounded-lg">₱{formatNumberWithCommas(item.price.toFixed(2))} <span className="text-gray-400 mx-1">x</span> {item.qty}</p>
-                                    </div>
-                                    <div className="flex items-center space-x-2 shrink-0 min-w-0 ml-2 max-w-[50%] justify-end">
-                                        <div className={`${theme.iconBg} border ${theme.borderHighlight} px-3 py-2 rounded-xl shadow-sm transition-colors min-w-0 flex-1 overflow-hidden`}>
-                                            <p className={`font-black text-xl ${theme.textValue} transition-colors truncate w-full text-center`}>₱{formatNumberWithCommas((item.price * item.qty).toFixed(2))}</p>
+                                <div key={item.id} className={`bg-white p-4 rounded-2xl shadow-xs border ${theme.softBg} flex flex-col space-y-2.5`}>
+                                    <div className="flex justify-between items-start gap-2">
+                                        <div className="min-w-0 flex-1">
+                                            <h3 className="font-bold text-gray-800 text-sm leading-snug truncate">{item.name}</h3>
+                                            <p className="text-[11px] font-semibold text-gray-400 mt-0.5">
+                                                ₱{formatNumberWithCommas(item.price.toFixed(2))} each
+                                            </p>
                                         </div>
                                         <button
                                             onClick={() => handleRemoveFromCart(item.id)}
-                                            className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 active:bg-red-100 rounded-xl transition-colors shrink-0"
+                                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
                                         >
-                                            <Trash2 size={24} />
+                                            <Trash2 size={18} />
                                         </button>
+                                    </div>
+
+                                    <div className="flex items-center justify-between pt-1 border-t border-gray-100">
+                                        <div className="flex items-center space-x-2 bg-gray-50 p-1 rounded-xl border border-gray-200">
+                                            <button
+                                                onClick={() => updateCartItemQty(item.id, -1)}
+                                                className="w-7 h-7 bg-white rounded-lg shadow-2xs flex items-center justify-center text-gray-700 active:scale-90"
+                                            >
+                                                <Minus size={14} />
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setEditingCartItemId(item.id);
+                                                    setQtyInputStr(item.qty.toString());
+                                                    setIsQtyPadVisible(true);
+                                                }}
+                                                className="px-2.5 text-sm font-black text-gray-800"
+                                            >
+                                                {item.qty}
+                                            </button>
+                                            <button
+                                                onClick={() => updateCartItemQty(item.id, 1)}
+                                                className="w-7 h-7 bg-white rounded-lg shadow-2xs flex items-center justify-center text-gray-700 active:scale-90"
+                                            >
+                                                <Plus size={14} />
+                                            </button>
+                                        </div>
+
+                                        <div className={`${theme.iconBg} border ${theme.borderHighlight} px-3 py-1 rounded-xl`}>
+                                            <p className={`font-black text-base ${theme.textValue}`}>
+                                                ₱{formatNumberWithCommas((item.price * item.qty).toFixed(2))}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             ))
                         )}
                     </div>
 
-                    <div className={`bg-white p-8 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)] border-t ${theme.border} z-10 relative transition-colors`}>
-                        <div className="flex justify-between items-end mb-6 space-x-4 w-full">
-                            <span className="text-gray-500 font-bold text-lg shrink-0">Total ({cart.reduce((s, i) => s + i.qty, 0)} items)</span>
-                            <span className="text-4xl font-black text-gray-800 truncate text-right flex-1 min-w-0">₱{formatNumberWithCommas(cartTotal.toFixed(2))}</span>
+                    <div className={`bg-white p-4 rounded-t-[2rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)] border-t ${theme.border} shrink-0`}>
+                        <div className="flex justify-between items-baseline mb-3">
+                            <span className="text-gray-500 font-bold text-sm">
+                                Total ({cart.reduce((s, i) => s + i.qty, 0)} items)
+                            </span>
+                            <span className="text-2xl font-black text-gray-800">
+                                ₱{formatNumberWithCommas(cartTotal.toFixed(2))}
+                            </span>
                         </div>
                         <button
                             onClick={() => cart.length > 0 && setScreen('checkout')}
-                            className={`w-full py-5 rounded-2xl font-bold text-xl transition-all shadow-lg ${cart.length > 0 ? `${theme.primary} text-white ${theme.primaryHover} ${theme.shadow}` : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                            className={`w-full py-4 rounded-2xl font-bold text-lg transition-all shadow-lg ${cart.length > 0
+                                ? `${theme.primary} text-white ${theme.primaryHover} ${theme.shadow}`
+                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                }`}
                         >
                             Lock & Finish
                         </button>
@@ -1119,18 +1560,179 @@
                 </div>
             );
 
-            // Popups
-            const renderWarning70Popup = () => (
-                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-                    <div className="bg-white p-8 rounded-[2.5rem] w-full max-w-sm flex flex-col items-center text-center shadow-2xl border-4 border-yellow-400">
-                        <div className="w-20 h-20 bg-yellow-100 rounded-[1.5rem] flex items-center justify-center mb-6 border border-yellow-200 shadow-sm">
-                            <AlertCircle size={48} className="text-yellow-600" />
+            // =========================================================================
+            // SCREEN 9: FINISH UP
+            // =========================================================================
+            const renderCheckout = () => (
+                <div className={`flex flex-col flex-1 min-h-0 ${defaultTheme.bg}`}>
+                    <div className={`${defaultTheme.primary} pt-4 pb-5 px-5 shadow-md z-10 relative text-white rounded-b-[2rem] shrink-0`}>
+                        <div className="grid grid-cols-3 items-center mb-4">
+                            <div className="flex justify-start">
+                                <button
+                                    onClick={() => setScreen('scanning')}
+                                    className="px-4 py-2 bg-white/20 hover:bg-white/30 active:scale-95 rounded-2xl text-white font-extrabold text-base flex items-center space-x-1.5 transition-all"
+                                >
+                                    <ArrowLeft size={20} />
+                                    <span>Back</span>
+                                </button>
+                            </div>
+                            <h2 className="text-xl font-black text-center tracking-wide">Finish Up</h2>
+                            <div></div>
                         </div>
-                        <h2 className="text-3xl font-black mb-3 text-gray-800">Budget Warning!</h2>
-                        <p className="text-gray-500 text-lg mb-8 leading-relaxed">You have reached <span className="font-bold text-yellow-600">70%</span> of your set budget. Spend wisely!</p>
+
+                        <p className="text-white/80 text-xs font-bold uppercase tracking-wider mb-1 text-center">
+                            Total Bill to Pay
+                        </p>
+                        <h1 className="text-4xl font-black tracking-tight text-center truncate">
+                            ₱{formatNumberWithCommas(cartTotal.toFixed(2))}
+                        </h1>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto px-5 py-4">
+                        <h3 className="font-bold text-gray-700 mb-3 flex items-center text-sm uppercase tracking-wider">
+                            <ScanLine size={18} className="mr-2 text-orange-600" /> Final Item List
+                        </h3>
+
+                        <div className="bg-white rounded-2xl shadow-xs border border-orange-200 overflow-hidden">
+                            {cart.length === 0 ? (
+                                <p className="p-6 text-center text-sm font-semibold text-gray-400">No items scanned yet.</p>
+                            ) : (
+                                cart.map((item, index) => (
+                                    <div key={index} className="p-4 border-b border-gray-100 flex justify-between items-center last:border-0">
+                                        <div className="flex-1 pr-3 min-w-0">
+                                            <h4 className="font-bold text-gray-800 text-sm truncate">{item.name}</h4>
+                                            <p className="text-xs font-medium text-gray-500 mt-0.5">
+                                                Qty: {item.qty} × ₱{formatNumberWithCommas(item.price.toFixed(2))}
+                                            </p>
+                                        </div>
+                                        <div className="bg-orange-50 border border-orange-200 px-3 py-1 rounded-xl shrink-0">
+                                            <p className="font-black text-orange-600 text-sm">
+                                                ₱{formatNumberWithCommas((item.price * item.qty).toFixed(2))}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-t-[2rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)] border-t border-orange-100 shrink-0">
+                        <button
+                            onClick={() => cart.length > 0 ? setCheckoutAction('choice') : setScreen('thank_you')}
+                            className="w-full py-4 bg-orange-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-orange-200 hover:bg-orange-600 active:scale-95 transition-all flex items-center justify-center space-x-2"
+                        >
+                            <CheckCircle2 size={24} />
+                            <span>Confirm & Exit</span>
+                        </button>
+                    </div>
+                </div>
+            );
+
+            const proceedAndExit = () => {
+                setCheckoutAction(null);
+                setQrError('');
+                setScreen('thank_you');
+            };
+
+            const renderQrChoicePopup = () => (
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-5 animate-in fade-in duration-200">
+                    <div className="bg-white p-6 rounded-[2rem] w-full max-w-sm flex flex-col items-center text-center shadow-2xl border border-orange-200">
+                        <h2 className="text-xl font-black mb-2 text-gray-800">Generate a QR Code?</h2>
+                        <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+                            Scan with your phone to read the itemized receipt. No website will open.
+                        </p>
+                        <div className="space-y-3 w-full">
+                            <button
+                                onClick={() => {
+                                    setQrError('');
+                                    setCheckoutAction('qr');
+                                }}
+                                className="w-full py-3.5 bg-orange-500 text-white rounded-2xl font-bold text-base shadow-md hover:bg-orange-600 active:scale-95 transition-all"
+                            >
+                                Generate QR Code
+                            </button>
+                            <button
+                                onClick={proceedAndExit}
+                                className="w-full py-3.5 bg-gray-100 text-gray-700 rounded-2xl font-bold text-base hover:bg-gray-200 active:scale-95 transition-all"
+                            >
+                                Proceed & Exit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const renderReceiptQrPopup = () => (
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-5 animate-in fade-in duration-200">
+                    <div className="bg-white p-5 rounded-[2rem] w-full max-w-sm flex flex-col items-center text-center shadow-2xl border border-orange-200">
+                        <h2 className="text-xl font-black mb-1 text-gray-800">Scan Your Receipt</h2>
+                        <p className="text-gray-500 text-xs mb-4 leading-relaxed">
+                            The QR contains readable receipt text, not a website link.
+                        </p>
+                        <div className="bg-white p-2 rounded-xl border border-gray-200">
+                            <div ref={qrContainerRef} className="w-[220px] h-[220px] flex items-center justify-center" />
+                        </div>
+                        {qrError && (
+                            <p role="alert" className="text-red-600 text-xs font-semibold mt-3">
+                                {qrError}
+                            </p>
+                        )}
+                        <div className="space-y-2 w-full mt-5">
+                            <button
+                                onClick={() => setCheckoutAction('choice')}
+                                className="w-full py-3 bg-gray-100 text-gray-700 rounded-2xl font-bold text-sm hover:bg-gray-200 transition-all"
+                            >
+                                Back
+                            </button>
+                            <button
+                                onClick={proceedAndExit}
+                                className="w-full py-3 bg-orange-500 text-white rounded-2xl font-bold text-sm shadow-md hover:bg-orange-600 transition-all"
+                            >
+                                Proceed & Exit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            // =========================================================================
+            // SCREEN 10: THANK YOU / ENDING
+            // =========================================================================
+            const renderThankYou = () => (
+                <div className="flex flex-col h-full bg-[#FFF9F5] items-center justify-center px-8 text-center animate-in fade-in duration-500">
+                    <div className="w-28 h-28 bg-white shadow-xl shadow-orange-200 border border-orange-200 rounded-full flex items-center justify-center mb-8">
+                        <CheckCircle2 size={56} className="text-orange-500" />
+                    </div>
+                    <h2 className="text-3xl font-black mb-3 text-orange-950">Thank You!</h2>
+                    <p className="text-gray-500 text-base mb-8 leading-relaxed">
+                        Your shopping session is complete and all session data has been cleared.
+                    </p>
+
+                    <div className="bg-white px-5 py-3 rounded-2xl border border-orange-100 shadow-xs flex items-center space-x-2 text-gray-500">
+                        <span className="w-2 h-2 rounded-full bg-orange-500 animate-ping"></span>
+                        <p className="text-xs font-extrabold uppercase tracking-widest">
+                            Returning to start in {thankYouSeconds}s
+                        </p>
+                    </div>
+                </div>
+            );
+
+            // =========================================================================
+            // POPUP OVERLAYS
+            // =========================================================================
+            const renderWarning70Popup = () => (
+                <div className="absolute inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-5 animate-in fade-in duration-200">
+                    <div className="bg-white p-6 rounded-[2rem] w-full max-w-xs flex flex-col items-center text-center shadow-2xl border-4 border-yellow-400">
+                        <div className="w-16 h-16 bg-yellow-100 rounded-2xl flex items-center justify-center mb-4 border border-yellow-200">
+                            <AlertCircle size={36} className="text-yellow-600" />
+                        </div>
+                        <h2 className="text-2xl font-black mb-2 text-gray-800">Budget Alert!</h2>
+                        <p className="text-gray-600 text-sm mb-6 leading-relaxed font-medium">
+                            {alertMessage || 'You have reached 70% of your budget. Spend wisely!'}
+                        </p>
                         <button
                             onClick={() => setPopupAlert(null)}
-                            className="w-full py-5 bg-yellow-500 text-white rounded-2xl font-bold text-xl shadow-lg shadow-yellow-200 hover:bg-yellow-600 active:scale-95 transition-all"
+                            className="w-full py-3.5 bg-yellow-500 text-white rounded-2xl font-bold text-base shadow-md hover:bg-yellow-600 active:scale-95 transition-all"
                         >
                             Close
                         </button>
@@ -1139,48 +1741,66 @@
             );
 
             const renderBudgetAlertPopup = () => (
-                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-                    <div className="bg-white p-6 rounded-[2.5rem] w-full max-w-sm flex flex-col items-center text-center shadow-2xl border-4 border-red-500">
-                        <div className="w-20 h-20 bg-red-100 rounded-[1.5rem] flex items-center justify-center mb-4 border border-red-200 shadow-sm">
-                            <AlertCircle size={48} className="text-red-500" />
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-5 animate-in fade-in duration-200">
+                    <div className="bg-white p-5 rounded-[2rem] w-full max-w-xs flex flex-col items-center text-center shadow-2xl border-4 border-red-500">
+                        <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center mb-3 border border-red-200">
+                            <AlertCircle size={32} className="text-red-500" />
                         </div>
-                        <h2 className="text-2xl font-black mb-2 text-gray-800">Budget Limit Reached!</h2>
-                        <p className="text-gray-500 text-sm mb-6 w-full text-center">Adding this item exceeds your budget of <br /><span className="font-bold text-red-600 truncate block w-full max-w-[250px] mx-auto mt-1">₱{formatNumberWithCommas(budget.toFixed(2))}</span></p>
+                        <h2 className="text-xl font-black mb-1 text-gray-800">Budget Limit Reached!</h2>
+                        <p className="text-gray-500 text-xs mb-4">
+                            Adding this item exceeds your total budget of{' '}
+                            <span className="font-bold text-red-600">
+                                ₱{formatNumberWithCommas(effectiveBudget.toFixed(2))}
+                            </span>
+                        </p>
 
-                        <div className="bg-red-50 border border-red-100 p-4 rounded-2xl w-full mb-6">
-                            <div className="flex justify-between mb-2 text-sm font-medium text-gray-600 space-x-4">
-                                <span className="shrink-0">Current Total:</span>
-                                <span className="font-bold text-gray-800 truncate text-right flex-1">₱{formatNumberWithCommas(cartTotal.toFixed(2))}</span>
+                        <div className="bg-red-50 border border-red-100 p-3 rounded-2xl w-full mb-4 text-xs">
+                            <div className="flex justify-between mb-1 text-gray-600">
+                                <span>Current Total:</span>
+                                <span className="font-bold text-gray-800">₱{formatNumberWithCommas(cartTotal.toFixed(2))}</span>
                             </div>
-                            <div className="flex justify-between mb-2 text-sm font-medium text-gray-600 space-x-4">
-                                <span className="shrink-0">Item to Add:</span>
-                                <span className="font-bold text-gray-800 truncate text-right flex-1">₱{formatNumberWithCommas((scannedItem?.price * itemQty).toFixed(2))}</span>
+                            <div className="flex justify-between mb-1 text-gray-600">
+                                <span>Item to Add:</span>
+                                <span className="font-bold text-gray-800">₱{formatNumberWithCommas(((scannedItem?.price || 0) * itemQty).toFixed(2))}</span>
                             </div>
-                            <div className="h-px bg-red-200 my-2"></div>
-                            <div className="flex justify-between text-lg font-black text-red-600 space-x-4">
-                                <span className="shrink-0">New Total:</span>
-                                <span className="truncate text-right flex-1">₱{formatNumberWithCommas((cartTotal + (scannedItem?.price * itemQty)).toFixed(2))}</span>
+                            <div className="h-px bg-red-200 my-1.5"></div>
+                            <div className="flex justify-between text-sm font-black text-red-600">
+                                <span>New Total:</span>
+                                <span>₱{formatNumberWithCommas((cartTotal + ((scannedItem?.price || 0) * itemQty)).toFixed(2))}</span>
                             </div>
                         </div>
 
-                        <div className="space-y-3 w-full">
-                            <button
-                                onClick={() => {
-                                    setPopupAlert(null);
-                                    setReturnScreen('item_scanned');
-                                    setBudgetInputStr(budget.toString());
-                                    setScreen('budget_input');
-                                }}
-                                className="w-full py-4 bg-orange-100 text-orange-700 border border-orange-200 rounded-2xl font-bold text-base hover:bg-orange-200 transition-colors"
-                            >
-                                Increase Budget Limit
-                            </button>
+                        <div className="space-y-2 w-full">
+                            {budgetMode === 'single' && (
+                                <button
+                                    onClick={() => {
+                                        setPopupAlert(null);
+                                        setReturnScreen('item_scanned');
+                                        setScreen('budget_input');
+                                    }}
+                                    className="w-full py-3 bg-white text-red-600 border border-red-200 rounded-xl font-bold text-xs hover:bg-red-50"
+                                >
+                                    Edit Budget Amount
+                                </button>
+                            )}
+                            {budgetMode === 'category' && (
+                                <button
+                                    onClick={() => {
+                                        setPopupAlert(null);
+                                        setReturnScreen('item_scanned');
+                                        setScreen('budget_allocate');
+                                    }}
+                                    className="w-full py-3 bg-white text-red-600 border border-red-200 rounded-xl font-bold text-xs hover:bg-red-50"
+                                >
+                                    Edit Category Budgets
+                                </button>
+                            )}
                             <button
                                 onClick={() => {
                                     setPopupAlert(null);
                                     setScreen('cart');
                                 }}
-                                className="w-full py-4 bg-gray-100 text-gray-700 border border-gray-200 rounded-2xl font-bold text-base hover:bg-gray-200 transition-colors"
+                                className="w-full py-3 bg-gray-100 text-gray-700 border border-gray-200 rounded-xl font-bold text-xs hover:bg-gray-200"
                             >
                                 Go to Cart to Adjust
                             </button>
@@ -1190,7 +1810,7 @@
                                     setPopupAlert(null);
                                     setScreen('checkout');
                                 }}
-                                className="w-full py-4 bg-red-500 text-white rounded-2xl font-bold text-base shadow-lg shadow-red-200 hover:bg-red-600 transition-colors"
+                                className="w-full py-3 bg-red-500 text-white rounded-xl font-bold text-xs shadow-md hover:bg-red-600"
                             >
                                 Add Anyway & Finish Up
                             </button>
@@ -1199,7 +1819,7 @@
                                     setPopupAlert(null);
                                     setScreen(scanOrigin);
                                 }}
-                                className="w-full py-3 bg-transparent text-gray-500 rounded-2xl font-bold text-sm hover:bg-gray-50 transition-colors"
+                                className="w-full py-2 text-gray-500 font-bold text-xs hover:bg-gray-50 rounded-xl"
                             >
                                 Cancel Item
                             </button>
@@ -1218,10 +1838,15 @@
 
                 const handleKey = (key) => {
                     if (key === 'DEL') {
-                        setQtyInputStr(prev => prev.length > 1 ? prev.slice(0, -1) : '0');
+                        setQtyInputStr(prev => (prev.length > 1 ? prev.slice(0, -1) : '0'));
                     } else if (key === 'OK') {
-                        const num = parseInt(qtyInputStr || '0', 10);
-                        setItemQty(Math.max(1, num));
+                        const num = Math.max(1, parseInt(qtyInputStr || '1', 10));
+                        if (editingCartItemId) {
+                            setCart(prev => prev.map(item => item.id === editingCartItemId ? { ...item, qty: num } : item));
+                            setEditingCartItemId(null);
+                        } else {
+                            setItemQty(num);
+                        }
                         setIsQtyPadVisible(false);
                     } else {
                         setQtyInputStr(prev => {
@@ -1233,33 +1858,48 @@
                 };
 
                 const adjustStr = (delta) => {
-                    const num = parseInt(qtyInputStr || '0', 10);
-                    const next = Math.max(1, num + delta);
-                    setQtyInputStr(next.toString());
+                    const num = parseInt(qtyInputStr || '1', 10);
+                    setQtyInputStr(Math.max(1, num + delta).toString());
                 };
 
                 return (
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-                        <div className={`bg-white p-6 rounded-[2.5rem] w-full max-w-sm flex flex-col shadow-2xl border-4 ${theme.borderHighlight}`}>
-                            <h3 className="text-center font-bold text-gray-400 mb-6 uppercase tracking-wider text-sm">Set Quantity</h3>
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-5 animate-in fade-in duration-200">
+                        <div className={`bg-white p-5 rounded-[2rem] w-full max-w-xs flex flex-col shadow-2xl border-4 ${theme.borderHighlight}`}>
+                            <h3 className="text-center font-bold text-gray-400 mb-4 uppercase tracking-wider text-xs">
+                                Set Quantity
+                            </h3>
 
-                            <div className="flex items-center justify-center space-x-6 mb-8">
-                                <button onClick={() => adjustStr(-1)} className={`p-4 ${theme.softBg} ${theme.textValue} rounded-2xl active:scale-95 transition-transform`}><ChevronDown size={32} strokeWidth={3} /></button>
-                                <div className="text-6xl font-black w-24 text-center text-gray-800">{qtyInputStr || '0'}</div>
-                                <button onClick={() => adjustStr(1)} className={`p-4 ${theme.softBg} ${theme.textValue} rounded-2xl active:scale-95 transition-transform`}><ChevronUp size={32} strokeWidth={3} /></button>
+                            <div className="flex items-center justify-center space-x-5 mb-5">
+                                <button
+                                    onClick={() => adjustStr(-1)}
+                                    className={`p-3 ${theme.softBg} ${theme.textValue} rounded-xl active:scale-95`}
+                                >
+                                    <ChevronDown size={24} strokeWidth={3} />
+                                </button>
+                                <div className="text-4xl font-black w-20 text-center text-gray-800">{qtyInputStr || '1'}</div>
+                                <button
+                                    onClick={() => adjustStr(1)}
+                                    className={`p-3 ${theme.softBg} ${theme.textValue} rounded-xl active:scale-95`}
+                                >
+                                    <ChevronUp size={24} strokeWidth={3} />
+                                </button>
                             </div>
 
-                            <div className="flex flex-col space-y-3">
+                            <div className="flex flex-col space-y-2">
                                 {numKeys.map((row, i) => (
-                                    <div key={i} className="flex space-x-3">
+                                    <div key={i} className="flex space-x-2">
                                         {row.map(key => (
                                             <button
                                                 key={key}
                                                 onClick={() => handleKey(key)}
-                                                className={`h-16 flex-1 rounded-2xl font-bold text-2xl shadow-[0_2px_0_rgba(0,0,0,0.05)] active:translate-y-1 active:shadow-none transition-all flex items-center justify-center border border-gray-100
-                                ${key === 'DEL' ? 'bg-gray-100 text-gray-600' : key === 'OK' ? `${theme.primary} text-white shadow-[0_4px_0_rgba(0,0,0,0.15)]` : 'bg-white text-gray-800 hover:bg-orange-50'}`}
+                                                className={`h-12 flex-1 rounded-xl font-bold text-lg border border-gray-100 active:scale-95 transition-all flex items-center justify-center ${key === 'DEL'
+                                                    ? 'bg-gray-100 text-gray-600'
+                                                    : key === 'OK'
+                                                        ? `${theme.primary} text-white`
+                                                        : 'bg-white text-gray-800 hover:bg-orange-50'
+                                                    }`}
                                             >
-                                                {key === 'DEL' ? <Delete size={24} /> : key === 'OK' ? <CheckCircle2 size={28} /> : key}
+                                                {key === 'DEL' ? <Delete size={20} /> : key === 'OK' ? <CheckCircle2 size={22} /> : key}
                                             </button>
                                         ))}
                                     </div>
@@ -1270,94 +1910,23 @@
                 );
             };
 
-            // Screen 12: Checkout
-            const renderCheckout = () => (
-                <div className={`flex flex-col h-full ${defaultTheme.bg} transition-colors`}>
-                    <div className={`${defaultTheme.primary} pt-10 pb-8 px-8 shadow-md z-10 relative text-white rounded-b-[2.5rem] transition-colors shrink-0 flex flex-col`}>
-                        <div className="flex items-center mb-8 shrink-0">
-                            <button onClick={() => setScreen('cart')} className="p-3 bg-white/20 hover:bg-white/30 rounded-full text-white mr-4 transition-colors">
-                                <ArrowLeft size={24} />
-                            </button>
-                            <h2 className="text-2xl font-bold">Finish Up</h2>
-                        </div>
-                        <p className="text-white/80 text-sm font-bold uppercase tracking-wider mb-2 shrink-0">Total Bill to Pay</p>
-                        <div className="w-full overflow-hidden">
-                            <h1 className="text-6xl font-black tracking-tight truncate w-full">₱{formatNumberWithCommas(cartTotal.toFixed(2))}</h1>
-                        </div>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto p-8">
-                        <h3 className="font-bold text-gray-700 mb-4 flex items-center text-lg uppercase tracking-wider shrink-0">
-                            <ScanLine size={20} className={`mr-3 ${defaultTheme.textValue} transition-colors`} /> Scanned Items
-                        </h3>
-
-                        <div className={`bg-white rounded-[2rem] shadow-sm border ${defaultTheme.borderHighlight} overflow-hidden mb-6 transition-colors`}>
-                            {cart.map((item, index) => (
-                                <div key={index} className="p-5 border-b border-gray-100 flex justify-between items-center last:border-0">
-                                    <div className="flex-1 pr-4 min-w-0">
-                                        <h4 className="font-bold text-gray-800 text-base mb-1 truncate">{item.name}</h4>
-                                        <p className="text-sm font-medium text-gray-500">Qty: {item.qty} | ₱{formatNumberWithCommas(item.price.toFixed(2))}</p>
-                                    </div>
-                                    <div className={`${defaultTheme.softBg} border ${defaultTheme.borderHighlight} px-3 py-1.5 rounded-lg shadow-sm shrink-0 ml-2 transition-colors min-w-0 max-w-[120px] flex items-center justify-center overflow-hidden`}>
-                                        <p className={`font-black ${defaultTheme.textValue} text-lg transition-colors truncate w-full text-center`}>₱{formatNumberWithCommas((item.price * item.qty).toFixed(2))}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className={`bg-white p-8 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)] border-t ${defaultTheme.border} z-10 relative transition-colors`}>
-                        <button
-                            onClick={() => setScreen('thank_you')}
-                            className={`w-full py-6 ${defaultTheme.primary} text-white rounded-[1.5rem] font-bold text-xl shadow-xl ${defaultTheme.shadow} ${defaultTheme.primaryHover} transition-colors flex items-center justify-center space-x-3`}
-                        >
-                            <CheckCircle2 size={28} />
-                            <span>Confirm & Exit</span>
-                        </button>
-                    </div>
-                </div>
-            );
-
-            // Screen 16: Thank You
-            const renderThankYou = () => (
-                <div className={`flex flex-col h-full ${defaultTheme.bg} items-center justify-center px-8 text-center transition-colors`}>
-                    <div className={`w-32 h-32 bg-white shadow-xl ${defaultTheme.shadow} border ${defaultTheme.borderHighlight} rounded-full flex items-center justify-center mb-10 transition-colors`}>
-                        <CheckCircle2 size={64} className={defaultTheme.textValue} />
-                    </div>
-                    <h2 className={`text-4xl font-black mb-4 ${defaultTheme.textTitle} transition-colors`}>Thank You!</h2>
-                    <p className="text-gray-500 text-lg mb-12 px-4 leading-relaxed">Your shopping session is successfully completed. Have a great day!</p>
-
-                    <div className="w-full flex items-center justify-center space-x-3 text-gray-400 mt-8">
-                        <div className="w-2 h-2 rounded-full bg-orange-300 animate-bounce"></div>
-                        <p className="text-sm font-bold uppercase tracking-widest">Restarting Shortly</p>
-                        <div className="w-2 h-2 rounded-full bg-orange-300 animate-bounce" style={{ animationDelay: '200ms' }}></div>
-                    </div>
-                </div>
-            );
-
-            // --- MAIN RENDER ROUTER ---
+            // =========================================================================
+            // MAIN KIOSK / MONITOR SHELL RENDERER
+            // =========================================================================
             return (
-                <div className="min-h-screen bg-neutral-200 py-10 flex items-center justify-center font-sans p-4">
-                    <div className="w-full max-w-[530px] h-[769px] bg-white rounded-[2.5rem] shadow-2xl shadow-neutral-400 border-[16px] border-[#1c1c1e] relative overflow-hidden flex flex-col select-none">
+                <div className="min-h-screen bg-neutral-200 py-4 sm:py-8 flex items-center justify-center font-sans px-3">
+                    <div className="w-full max-w-[480px] h-[760px] max-h-[94vh] bg-white rounded-[2.5rem] shadow-2xl shadow-neutral-400 border-[14px] border-[#1c1c1e] relative overflow-hidden flex flex-col">
 
-                        {/* Network Status Toggle */}
-                        {screen !== 'splash1' && screen !== 'tutorial' && (
-                            <button
-                                onClick={() => setIsOnline(!isOnline)}
-                                className={`absolute top-5 right-6 z-50 flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm transition-all border backdrop-blur-md ${isOnline
-                                    ? 'bg-white/90 text-green-600 border-green-200 hover:bg-white'
-                                    : 'bg-white/90 text-gray-500 border-gray-200 hover:bg-white'
-                                    }`}
-                            >
-                                <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
-                                <span>{isOnline ? 'Online' : 'Offline'}</span>
-                            </button>
-                        )}
+                        {/* Persistent Header on all screens except startup & ending */}
+                        {showPersistentHeader && <TopHeader />}
 
+                        {/* Screen Router */}
                         {screen === 'splash1' && renderSplash1()}
+                        {screen === 'privacy_consent' && renderPrivacyConsent()}
                         {screen === 'tutorial' && renderTutorial()}
                         {screen === 'budget_prompt' && renderBudgetPrompt()}
                         {screen === 'budget_allocate' && renderBudgetAllocate()}
+                        {screen === 'budget_input' && renderBudgetInput()}
                         {screen === 'scanning' && renderScanning()}
                         {screen === 'manual_input' && renderManualInput()}
                         {screen === 'item_scanned' && renderItemScanned()}
@@ -1365,17 +1934,18 @@
                         {screen === 'checkout' && renderCheckout()}
                         {screen === 'thank_you' && renderThankYou()}
 
-                        {/* --- GLOBAL POPUP OVERLAYS --- */}
+                        {/* Global Overlay Modals */}
                         {popupAlert === 'warning70' && renderWarning70Popup()}
                         {popupAlert === 'limit' && renderBudgetAlertPopup()}
                         {isQtyPadVisible && renderQtyPadPopup()}
+                        {checkoutAction === 'choice' && renderQrChoicePopup()}
+                        {checkoutAction === 'qr' && renderReceiptQrPopup()}
 
                     </div>
                 </div>
             );
         }
 
-        // Mount React 18 Application inside Container context
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>

@@ -295,13 +295,14 @@
                                 <th class="p-4 pl-6">Barcode ID</th>
                                 <th class="p-4">Product Name</th>
                                 <th class="p-4">Price (₱)</th>
-                                <th class="p-4">Stock Status</th>
+                                <th class="p-4">Stock Level</th>
                                 <th class="p-4 text-right pr-6">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="products-table-body" class="divide-y divide-slate-100">
                             <tr>
-                                <td colspan="5" class="p-8 text-center text-slate-400 font-medium">Loading products from Firebase...</td>
+                                <td colspan="5" class="p-8 text-center text-slate-400 font-medium">Loading products from
+                                    Firebase...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -671,15 +672,13 @@
                     if (!raw || typeof raw !== 'object') return;
                     const itemName = raw.name || raw.item_description || raw.description || 'Unknown Item';
                     const itemPrice = parseFloat(raw.price !== undefined ? raw.price : raw.unit_price) || 0;
-                    const itemStock = raw.stock || 'High Stock';
                     const barcode = String(raw.sku || key);
                     allProducts.push({
                         ...raw,
                         dbKey: key,
                         barcode: barcode,
                         name: itemName,
-                        price: itemPrice,
-                        stock: itemStock
+                        price: itemPrice
                     });
                 });
             }
@@ -750,9 +749,9 @@
                 return stock;
             }
             if (stock == null || isNaN(stock)) return 'High Stock';
-            const num = parseFloat(stock);
-            if (num < 20) return 'Low Stock';
-            if (num < 50) return 'Moderate Stock';
+            const quantity = parseFloat(stock);
+            if (quantity < 20) return 'Low Stock';
+            if (quantity < 50) return 'Moderate Stock';
             return 'High Stock';
         }
 
@@ -850,12 +849,11 @@
             const sortSelect = document.getElementById('sort-by');
             const sortBy = sortSelect ? sortSelect.value : 'default';
 
-            // 1. Filter by Search Query & Stock Status
+            // 1. Filter by Search Query
             let filtered = allProducts.filter(p => {
                 const barcode = (p.barcode || '').toString().toLowerCase();
                 const name = (p.name || '').toString().toLowerCase();
                 const matchesSearch = !query || barcode.includes(query) || name.includes(query);
-                
                 const stockStatus = getStockStatus(p.stock);
                 const matchesStock = (stockFilter === 'All' || stockStatus === stockFilter);
                 return matchesSearch && matchesStock;
@@ -974,7 +972,7 @@
                 }
             }
 
-            const existingProd = editingKey ? allProducts.find(p => p.dbKey === editingKey) : null;
+            const existingProduct = editingKey ? allProducts.find(product => product.dbKey === editingKey) : null;
             const roundedPrice = Math.round(price * 100) / 100;
             const productData = {
                 sku: newBarcode,
@@ -985,10 +983,9 @@
                 stock: stock,
                 updatedAt: Date.now()
             };
-            if (existingProd && existingProd.category) {
-                productData.category = existingProd.category;
+            if (existingProduct && existingProduct.category) {
+                productData.category = existingProduct.category;
             }
-
             const saveBtn = document.getElementById('save-product-btn');
             saveBtn.disabled = true;
             saveBtn.innerText = 'Saving...';
