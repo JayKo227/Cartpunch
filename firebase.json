@@ -1,5 +1,37 @@
 {
   "database": {
     "rules": "database.rules.json"
-  }
+  },
+  "hosting": [
+    {
+      "site": "cartpunch-5b2d8",
+      "public": "frontend_admin",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "/",
+          "destination": "/Login.html"
+        }
+      ]
+    },
+    {
+      "site": "cartpunch-monitor-5b2d8",
+      "public": "frontend_monitor",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "/",
+          "destination": "/Monitor.html"
+        }
+      ]
+    }
+  ]
 }
