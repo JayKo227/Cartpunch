@@ -21,7 +21,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -47,6 +49,18 @@
             <p id="countdown" class="text-2xl font-extrabold text-amber-800 mt-0.5">05:00</p>
         </div>
 
+        <div id="pending-actions" class="space-y-3">
+            <button id="resend-button" type="button"
+                class="w-full py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                Resend Approval Email
+            </button>
+            <button id="cancel-button" type="button"
+                class="w-full py-3 bg-white hover:bg-slate-50 text-slate-600 font-bold rounded-lg border border-slate-200 transition-all">
+                Cancel Request / Back to Sign Up
+            </button>
+            <p id="action-message" class="hidden text-sm" role="status" aria-live="polite"></p>
+        </div>
+
         <a id="action-link" href="Login.html"
             class="hidden w-full py-3.5 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow-md transition-all inline-block">
             Proceed to Admin Login
@@ -65,14 +79,59 @@
             messagingSenderId: "520710359414",
             appId: "1:520710359414:web:24f13d22d295deb2a0d257"
         };
-        firebase.initializeApp(firebaseConfig);
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        emailjs.init('IMe8nVqxdPtnxetW0');
+        const EMAILJS_SERVICE_ID = 'service_wvjz4b8';
+        const EMAILJS_APPROVAL_TEMPLATE_ID = 'template_mpb2gkd';
+        const MAIN_ADMIN_EMAIL = 'cartpunch.security@gmail.com';
+        const auth = firebase.auth();
         const db = firebase.database();
 
         const params = new URLSearchParams(window.location.search);
         const reqId = params.get('req');
+        const applicantEmail = params.get('email');
         let timerInterval = null;
+        let loginRedirectTimer = null;
+        let applicantUser = null;
+        let authChecked = false;
+        const resendButton = document.getElementById('resend-button');
+        const cancelButton = document.getElementById('cancel-button');
+        const actionMessage = document.getElementById('action-message');
+        resendButton.disabled = true;
+        resendButton.textContent = 'Checking Sign-In...';
+        cancelButton.disabled = true;
 
-        if (!reqId) {
+        function showActionMessage(message, isError) {
+            actionMessage.textContent = message;
+            actionMessage.className = `text-sm ${isError ? 'text-rose-600' : 'text-emerald-700'}`;
+            actionMessage.classList.remove('hidden');
+        }
+
+        auth.onAuthStateChanged((user) => {
+            applicantUser = user;
+            authChecked = true;
+            resendButton.disabled = !user;
+            resendButton.textContent = user ? 'Resend Approval Email' : 'Sign-In Session Required';
+            cancelButton.disabled = false;
+            if (!user) {
+                cancelButton.textContent = 'Back to Sign Up';
+                showActionMessage('Your sign-in session expired. You can go back and submit a new request.', true);
+            }
+        });
+
+        function getAdminLoginUrl() {
+            const loginUrl = new URL('Login.html', window.location.href);
+            loginUrl.searchParams.set('approved', '1');
+            loginUrl.searchParams.set('req', reqId);
+            if (applicantEmail && applicantEmail.includes('@')) {
+                loginUrl.searchParams.set('email', applicantEmail);
+            }
+            return loginUrl.href;
+        }
+
+        if (!reqId || !/^[A-Za-z0-9_-]+$/.test(reqId)) {
             window.location.replace('Signup.html');
         } else {
             const statusRef = db.ref(`pending_admin_status/${reqId}`);
@@ -80,6 +139,7 @@
             function showTerminalState({ iconClass, iconName, title, desc, btnText, btnHref }) {
                 clearInterval(timerInterval);
                 timerInterval = null;
+                document.getElementById('pending-actions').classList.add('hidden');
                 const iconEl = document.getElementById('status-icon');
                 iconEl.className = `w-16 h-16 mx-auto ${iconClass} rounded-2xl flex items-center justify-center`;
                 iconEl.innerHTML = `<i data-lucide="${iconName}" class="w-8 h-8"></i>`;
@@ -117,22 +177,48 @@
                     });
                     return;
                 }
+                if (!Number.isFinite(data.expiresAt)) {
+                    showTerminalState({
+                        iconClass: 'bg-rose-100 text-rose-600',
+                        iconName: 'alert-circle',
+                        title: 'Invalid Request',
+                        desc: 'This request has no valid expiration time. Please submit a new sign-up request.',
+                        btnText: 'Back to Sign Up',
+                        btnHref: 'Signup.html'
+                    });
+                    return;
+                }
 
                 if (data.status === 'approved') {
+                    const loginUrl = getAdminLoginUrl();
                     showTerminalState({
                         iconClass: 'bg-emerald-100 text-emerald-600',
                         iconName: 'check-circle',
                         title: 'Request Approved!',
-                        desc: 'Your request was approved. Create your account to continue.',
-                        btnText: 'Create Account',
-                        btnHref: `CreateAccount.html?req=${encodeURIComponent(reqId)}`
+                        desc: 'Your request was approved. Sign in with the email and password you created.',
+                        btnText: 'Go to Admin Login',
+                        btnHref: loginUrl
                     });
+                    if (loginRedirectTimer === null) {
+                        loginRedirectTimer = window.setTimeout(() => {
+                            window.location.assign(loginUrl);
+                        }, 2200);
+                    }
                 } else if (data.status === 'rejected') {
                     showTerminalState({
                         iconClass: 'bg-rose-100 text-rose-600',
                         iconName: 'x-circle',
                         title: 'Request Declined',
                         desc: 'The Main Admin declined this sign-up request.',
+                        btnText: 'Back to Sign Up',
+                        btnHref: 'Signup.html'
+                    });
+                } else if (data.status === 'cancelled') {
+                    showTerminalState({
+                        iconClass: 'bg-slate-100 text-slate-500',
+                        iconName: 'ban',
+                        title: 'Request Cancelled',
+                        desc: 'This request was cancelled. You can submit a new sign-up request.',
                         btnText: 'Back to Sign Up',
                         btnHref: 'Signup.html'
                     });
@@ -155,6 +241,109 @@
                     if (data.expiresAt - Date.now() > 0) {
                         timerInterval = setInterval(tick, 1000);
                     }
+                }
+            });
+
+            resendButton.addEventListener('click', async () => {
+                resendButton.disabled = true;
+                resendButton.textContent = 'Resending...';
+                let resendReserved = false;
+                try {
+                    const user = applicantUser;
+                    if (!authChecked || !user || !user.email) {
+                        throw new Error('Your sign-in session expired. Go back to sign up and submit a new request.');
+                    }
+
+                    const requestSnapshot = await db.ref(`pending_admin_requests/${reqId}`).once('value');
+                    const request = requestSnapshot.val();
+                    if (!request || request.status !== 'pending' ||
+                        typeof request.email !== 'string' ||
+                        !Number.isFinite(request.expiresAt) ||
+                        request.uid !== user.uid ||
+                        request.email.toLowerCase() !== user.email.toLowerCase()) {
+                        throw new Error('This pending request does not match your signed-in account.');
+                    }
+                    if (Date.now() >= request.expiresAt) {
+                        throw new Error('The five-minute request window expired. Submit a new request.');
+                    }
+
+                    const resendRef = db.ref(`pending_admin_resends/${reqId}/${user.uid}`);
+                    const resendResult = await resendRef.transaction((current) => {
+                        if (current === null) {
+                            return { requestedAt: Date.now() };
+                        }
+                        return;
+                    });
+                    if (!resendResult.committed) {
+                        throw new Error('The approval email was already resent for this request. You can cancel and submit a new request if needed.');
+                    }
+                    resendReserved = true;
+
+                    const approveBaseUrl = new URL('ApproveAdmin.html', window.location.href).href;
+                    const approveLink = `${approveBaseUrl}?req=${encodeURIComponent(reqId)}&action=approve`;
+                    const rejectLink = `${approveBaseUrl}?req=${encodeURIComponent(reqId)}&action=reject`;
+                    const remainingSeconds = Math.max(0, Math.ceil((request.expiresAt - Date.now()) / 1000));
+                    const remainingTime = `${String(Math.floor(remainingSeconds / 60)).padStart(2, '0')}:${String(remainingSeconds % 60).padStart(2, '0')}`;
+
+                    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_APPROVAL_TEMPLATE_ID, {
+                        to_email: MAIN_ADMIN_EMAIL,
+                        applicant_name: request.name,
+                        applicant_position: request.position,
+                        applicant_department: request.department,
+                        applicant_email: request.email,
+                        approve_link: approveLink,
+                        reject_link: rejectLink,
+                        expires_in: `${remainingTime} remaining`
+                    });
+                    resendButton.textContent = 'Email Resent';
+                    showActionMessage('The approval email was resent. The original five-minute timer is still running.', false);
+                } catch (error) {
+                    console.error(error);
+                    resendButton.disabled = false;
+                    resendButton.textContent = 'Resend Approval Email';
+                    const message = resendReserved
+                        ? `Email could not be sent. Cancel and submit a new request to try again. ${error.message || ''}`
+                        : error.message || 'Could not resend the approval email.';
+                    showActionMessage(message, true);
+                }
+            });
+
+            cancelButton.addEventListener('click', async () => {
+                if (!applicantUser) {
+                    window.location.assign('Signup.html');
+                    return;
+                }
+                if (!window.confirm('Cancel this approval request and return to sign up?')) {
+                    return;
+                }
+
+                cancelButton.disabled = true;
+                cancelButton.textContent = 'Cancelling...';
+                try {
+                    const requestSnapshot = await db.ref(`pending_admin_requests/${reqId}`).once('value');
+                    const request = requestSnapshot.val();
+                    if (!request || request.status !== 'pending' ||
+                        typeof request.email !== 'string' ||
+                        request.uid !== applicantUser.uid ||
+                        !applicantUser.email ||
+                        request.email.toLowerCase() !== applicantUser.email.toLowerCase()) {
+                        throw new Error('This pending request does not match your signed-in account.');
+                    }
+
+                    const now = Date.now();
+                    const updates = {};
+                    updates[`pending_admin_requests/${reqId}/status`] = 'cancelled';
+                    updates[`pending_admin_requests/${reqId}/resolvedAt`] = now;
+                    updates[`pending_admin_status/${reqId}/status`] = 'cancelled';
+                    updates[`pending_admin_status/${reqId}/resolvedAt`] = now;
+                    await db.ref().update(updates);
+                    await auth.signOut();
+                    window.location.replace('Signup.html');
+                } catch (error) {
+                    console.error(error);
+                    cancelButton.disabled = false;
+                    cancelButton.textContent = 'Cancel Request / Back to Sign Up';
+                    showActionMessage(error.message || 'Could not cancel this request.', true);
                 }
             });
         }

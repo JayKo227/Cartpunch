@@ -45,14 +45,14 @@
             <p><strong>Position:</strong> <span id="request-position"></span></p>
             <p><strong>Department:</strong> <span id="request-department"></span></p>
         </div>
+        <button id="google-signin" type="button"
+            class="hidden w-full py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow-md transition-all">
+            Sign in with Google as Main Admin
+        </button>
         <a id="login-link" href="Login.html"
             class="hidden w-full py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow-md transition-all inline-block">
-            Sign in as Main Admin
+            Use email and password instead
         </a>
-        <button id="confirm-action"
-            class="hidden w-full py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow-md transition-all">
-            Confirm
-        </button>
     </div>
 
     <script>
@@ -76,6 +76,12 @@
         const action = params.get('action');
         let requestRef = null;
         let requestData = null;
+        let approvalStarted = false;
+        let signInNotice = null;
+
+        function isMainAdminUser(user) {
+            return Boolean(user && user.email && user.email.toLowerCase() === MAIN_ADMIN_EMAIL.toLowerCase());
+        }
 
         function renderResult(type, titleText, msgText) {
             const iconWrap = document.getElementById('icon-wrap');
@@ -92,7 +98,46 @@
         }
 
         function showLoginLink() {
+            document.getElementById('google-signin').classList.remove('hidden');
             document.getElementById('login-link').classList.remove('hidden');
+        }
+
+        async function signInWithGoogle() {
+            const button = document.getElementById('google-signin');
+            button.disabled = true;
+            button.textContent = 'Signing in...';
+            const provider = new firebase.auth.GoogleAuthProvider();
+            provider.setCustomParameters({
+                login_hint: MAIN_ADMIN_EMAIL,
+                prompt: 'select_account'
+            });
+            try {
+                const result = await auth.signInWithPopup(provider);
+                if (!isMainAdminUser(result.user)) {
+                    signInNotice = {
+                        title: 'Wrong Google Account',
+                        message: `Sign in with ${MAIN_ADMIN_EMAIL} to approve requests.`
+                    };
+                    await auth.signOut();
+                    renderResult('error', signInNotice.title, signInNotice.message);
+                    showLoginLink();
+                }
+            } catch (error) {
+                console.error(error);
+                let message;
+                if (error.code === 'auth/operation-not-allowed') {
+                    message = 'Google sign-in is not enabled for this Firebase project. Enable it under Firebase Authentication sign-in providers.';
+                } else if (error.code === 'auth/popup-blocked') {
+                    message = 'The sign-in popup was blocked. Allow popups for localhost and try again.';
+                } else {
+                    message = 'Could not sign in with Google: ' + (error.message || 'Unknown error');
+                }
+                renderResult('error', 'Google Sign-In Failed', message);
+                showLoginLink();
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Sign in with Google as Main Admin';
+            }
         }
 
         async function markRequestExpired() {
@@ -107,12 +152,10 @@
         }
 
         async function confirmAction() {
-            const button = document.getElementById('confirm-action');
-            button.disabled = true;
             try {
                 const user = auth.currentUser;
-                if (!user || user.email !== MAIN_ADMIN_EMAIL) {
-                    renderResult('error', 'Main Admin Sign-In Required', 'Sign in with the authorized Main Admin account, then reopen this approval link.');
+                if (!isMainAdminUser(user)) {
+                    renderResult('error', 'Main Admin Sign-In Required', `Sign in with ${MAIN_ADMIN_EMAIL} to approve requests.`);
                     showLoginLink();
                     return;
                 }
@@ -142,6 +185,23 @@
                 updates[`pending_admin_requests/${reqId}/password`] = null;
                 updates[`pending_admin_status/${reqId}/status`] = status;
                 updates[`pending_admin_status/${reqId}/resolvedAt`] = now;
+                if (status === 'approved' && typeof requestData.uid === 'string' &&
+                    /^[A-Za-z0-9_-]{1,128}$/.test(requestData.uid)) {
+                    const adminRef = db.ref(`admins/${requestData.uid}`);
+                    const adminSnapshot = await adminRef.once('value');
+                    if (!adminSnapshot.exists()) {
+                        updates[`admins/${requestData.uid}`] = {
+                            requestId: reqId,
+                            name: requestData.name,
+                            position: requestData.position,
+                            department: requestData.department,
+                            email: requestData.email,
+                            role: 'admin',
+                            approvedBy: MAIN_ADMIN_EMAIL,
+                            approvedAt: now
+                        };
+                    }
+                }
                 await db.ref().update(updates);
                 renderResult(
                     status === 'approved' ? 'success' : 'error',
@@ -155,13 +215,22 @@
         }
 
         async function loadRequest(user) {
-            if (!user || user.email !== MAIN_ADMIN_EMAIL) {
-                renderResult('error', 'Main Admin Sign-In Required', 'Sign in with the authorized Main Admin account, then reopen this approval link.');
+            if (!isMainAdminUser(user)) {
+                const notice = signInNotice;
+                signInNotice = null;
+                renderResult(
+                    'error',
+                    notice ? notice.title : 'Main Admin Sign-In Required',
+                    notice ? notice.message : `Sign in with ${MAIN_ADMIN_EMAIL} to approve requests.`
+                );
                 showLoginLink();
                 return;
             }
+            if (approvalStarted) return;
+            approvalStarted = true;
 
             document.getElementById('login-link').classList.add('hidden');
+            document.getElementById('google-signin').classList.add('hidden');
             try {
                 requestRef = db.ref(`pending_admin_requests/${reqId}`);
                 const snap = await requestRef.once('value');
@@ -185,12 +254,9 @@
                 document.getElementById('request-position').textContent = requestData.position;
                 document.getElementById('request-department').textContent = requestData.department;
                 document.getElementById('request-details').classList.remove('hidden');
-                document.getElementById('message').textContent = 'Review the applicant details, then confirm your decision.';
-                const button = document.getElementById('confirm-action');
-                button.textContent = action === 'approve' ? 'Confirm Approval' : 'Confirm Rejection';
-                button.classList.remove('hidden');
-                button.addEventListener('click', confirmAction, { once: true });
-                document.getElementById('title').textContent = action === 'approve' ? 'Approve Admin Request?' : 'Reject Admin Request?';
+                document.getElementById('title').textContent = action === 'approve' ? 'Approving Admin Request...' : 'Rejecting Admin Request...';
+                document.getElementById('message').textContent = 'Main Admin verified. Updating the request in Firebase.';
+                await confirmAction();
             } catch (err) {
                 console.error(err);
                 renderResult('error', 'Approval Failed', 'Could not read request details: ' + err.message);
@@ -200,6 +266,7 @@
         if (!reqId || !/^[A-Za-z0-9_-]+$/.test(reqId) || !['approve', 'reject'].includes(action)) {
             renderResult('error', 'Invalid Approval Link', 'Missing or malformed request parameters.');
         } else {
+            document.getElementById('google-signin').addEventListener('click', signInWithGoogle);
             auth.onAuthStateChanged(loadRequest);
         }
     </script>

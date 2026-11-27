@@ -49,16 +49,19 @@
         </div>
 
         <form id="login-form" class="space-y-5">
+            <div id="approval-notice" class="hidden bg-emerald-50 text-emerald-700 text-sm font-semibold p-4 rounded-lg border border-emerald-100">
+                Your admin request was approved. Sign in with the email and password you created.
+            </div>
             <div id="error-message" class="hidden bg-rose-50 text-rose-600 text-sm font-semibold p-4 rounded-lg border border-rose-100 flex items-center space-x-2">
                 <i data-lucide="alert-circle" class="w-4 h-4"></i>
                 <span id="error-text">Invalid credentials</span>
             </div>
 
             <div>
-                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Username</label>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email or Username</label>
                 <div class="relative">
                     <i data-lucide="user" class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input type="text" id="email" required placeholder="admin" class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all">
+                    <input type="text" id="email" required autocomplete="username" placeholder="name@example.com" class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all">
                 </div>
             </div>
             <div>

@@ -26,6 +26,7 @@
 
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
     <!-- EmailJS SDK -->
@@ -47,7 +48,7 @@
                 <i data-lucide="user-plus" class="w-7 h-7"></i>
             </div>
             <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Admin Sign Up</h1>
-            <p class="text-sm text-slate-500 mt-1 text-center">Submit your details for Main Admin approval. Set your password after approval.</p>
+            <p class="text-sm text-slate-500 mt-1 text-center">Create your account and submit your details for Main Admin approval. Admin access starts after approval.</p>
         </div>
 
         <div id="error-box"
@@ -81,7 +82,6 @@
                 </div>
             </div>
 
-            <!-- Email Only -->
             <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Email
                     Address</label>
@@ -89,6 +89,33 @@
                     <i data-lucide="mail" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
                     <input type="email" id="email" required placeholder="name@example.com"
                         class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Password</label>
+                <div class="relative">
+                    <input type="password" id="password" required minlength="8" autocomplete="new-password"
+                        placeholder="At least 8 characters"
+                        class="w-full px-4 pr-12 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+                    <button type="button" id="toggle-password" aria-label="Show password" aria-controls="password"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500 rounded">
+                        <i data-lucide="eye" aria-hidden="true" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <p class="text-xs text-slate-500 mt-1">Include a letter, number, and symbol.</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Confirm Password</label>
+                <div class="relative">
+                    <input type="password" id="confirm-password" required minlength="8" autocomplete="new-password"
+                        placeholder="Enter your password again"
+                        class="w-full px-4 pr-12 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+                    <button type="button" id="toggle-confirm-password" aria-label="Show confirm password" aria-controls="confirm-password"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500 rounded">
+                        <i data-lucide="eye" aria-hidden="true" class="w-4 h-4"></i>
+                    </button>
                 </div>
             </div>
 
@@ -108,6 +135,36 @@
     <script>
         lucide.createIcons();
 
+        function togglePasswordVisibility(inputId, buttonId) {
+            const input = document.getElementById(inputId);
+            const button = document.getElementById(buttonId);
+            const isHidden = input.type === 'password';
+
+            input.type = isHidden ? 'text' : 'password';
+            button.setAttribute('aria-label', `${isHidden ? 'Hide' : 'Show'} ${inputId === 'password' ? 'password' : 'confirm password'}`);
+            button.innerHTML = `<i data-lucide="${isHidden ? 'eye-off' : 'eye'}" aria-hidden="true" class="w-4 h-4"></i>`;
+            lucide.createIcons();
+        }
+
+        document.getElementById('toggle-password').addEventListener('click', () => {
+            togglePasswordVisibility('password', 'toggle-password');
+        });
+        document.getElementById('toggle-confirm-password').addEventListener('click', () => {
+            togglePasswordVisibility('confirm-password', 'toggle-confirm-password');
+        });
+
+        ['password', 'confirm-password'].forEach((inputId) => {
+            const input = document.getElementById(inputId);
+            ['copy', 'cut', 'paste', 'drop'].forEach((eventName) => {
+                input.addEventListener(eventName, (event) => event.preventDefault());
+            });
+            input.addEventListener('keydown', (event) => {
+                if ((event.ctrlKey || event.metaKey) && ['c', 'v', 'x'].includes(event.key.toLowerCase())) {
+                    event.preventDefault();
+                }
+            });
+        });
+
         const firebaseConfig = {
             apiKey: "AIzaSyDnOqNF8U-uNKDQEZiR0AyMd6JAbFNEIFE",
             authDomain: "cartpunch-5b2d8.firebaseapp.com",
@@ -118,13 +175,14 @@
             appId: "1:520710359414:web:24f13d22d295deb2a0d257"
         };
         firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
         const db = firebase.database();
+        const MAIN_ADMIN_EMAIL = 'cartpunch.security@gmail.com';
 
         // Replace with your EmailJS Public Key, Service ID, Approval Template ID & Main Admin Email
         const EMAILJS_PUBLIC_KEY = "IMe8nVqxdPtnxetW0";
         const EMAILJS_SERVICE_ID = "service_wvjz4b8";
         const EMAILJS_APPROVAL_TEMPLATE_ID = "template_mpb2gkd";
-        const MAIN_ADMIN_EMAIL = "cartpunch.security@gmail.com";
 
         emailjs.init(EMAILJS_PUBLIC_KEY);
 
@@ -132,6 +190,17 @@
             document.getElementById('error-text').innerText = msg;
             document.getElementById('error-box').classList.remove('hidden');
             document.getElementById('request-status-link').classList.add('hidden');
+        }
+
+        function showRequestStatusLink(requestId, email) {
+            const statusLink = document.getElementById('request-status-link');
+            statusLink.href = `PendingApproval.html?req=${encodeURIComponent(requestId)}&email=${encodeURIComponent(email)}`;
+            statusLink.classList.remove('hidden');
+        }
+
+        function passwordIsStrong(password) {
+            return password.length >= 8 && /[A-Za-z]/.test(password) &&
+                /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
         }
 
         document.getElementById('signup-form').addEventListener('submit', async (e) => {
@@ -142,11 +211,21 @@
             const position = document.getElementById('position').value.trim();
             const department = document.getElementById('department').value.trim();
             const email = document.getElementById('email').value.trim().toLowerCase();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
 
-            // Strict email-only format check
             const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
             if (!emailRegex.test(email)) {
                 return showError('Please enter a valid email address only.');
+            }
+            if (email === MAIN_ADMIN_EMAIL) {
+                return showError('The Main Admin account cannot be used to request another admin account.');
+            }
+            if (!passwordIsStrong(password)) {
+                return showError('Password must be at least 8 characters with a letter, number, and symbol.');
+            }
+            if (password !== confirmPassword) {
+                return showError('Passwords do not match.');
             }
 
             const btn = document.getElementById('signup-btn');
@@ -157,31 +236,56 @@
             let requestSaved = false;
             let requestId = null;
             try {
+                let credential;
+                try {
+                    credential = await auth.createUserWithEmailAndPassword(email, password);
+                } catch (error) {
+                    if (error.code !== 'auth/email-already-in-use') throw error;
+                    credential = await auth.signInWithEmailAndPassword(email, password);
+                }
+
+                const user = credential.user;
+                const existingAdmin = await db.ref(`admins/${user.uid}`).once('value');
+                if (existingAdmin.exists()) {
+                    await auth.signOut();
+                    showError('This email already has an admin account. Please use the Admin Login page.');
+                    return;
+                }
+
                 const requestRef = db.ref('pending_admin_requests').push();
                 requestId = requestRef.key;
                 const now = Date.now();
                 const expiresAt = now + (5 * 60 * 1000); // 5 minutes expiration
 
-                const updates = {};
-                updates[`pending_admin_requests/${requestId}`] = {
+                await requestRef.set({
+                    uid: user.uid,
                     name,
                     position,
                     department,
-                    email,
+                    email: user.email,
                     status: 'pending',
                     createdAt: now,
                     expiresAt
-                };
-                updates[`pending_admin_status/${requestId}`] = {
+                });
+                requestSaved = true;
+
+                await db.ref(`pending_admin_status/${requestId}`).set({
                     status: 'pending',
                     expiresAt
-                };
-                await db.ref().update(updates);
-                requestSaved = true;
+                });
 
                 const approveBaseUrl = new URL('ApproveAdmin.html', window.location.href).href;
                 const approveLink = `${approveBaseUrl}?req=${requestId}&action=approve`;
                 const rejectLink = `${approveBaseUrl}?req=${requestId}&action=reject`;
+
+                let verificationError = null;
+                const continueUrl = new URL(`CreateAccount.html?req=${encodeURIComponent(requestId)}`, window.location.href).href;
+                try {
+                    await user.sendEmailVerification({ url: continueUrl });
+                } catch (error) {
+                    console.error(error);
+                    verificationError = error;
+                }
 
                 await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_APPROVAL_TEMPLATE_ID, {
                     to_email: MAIN_ADMIN_EMAIL,
@@ -194,15 +298,22 @@
                     expires_in: '5 minutes'
                 });
 
-                window.location.href = `PendingApproval.html?req=${requestId}`;
+                if (verificationError) {
+                    showError('Your approval request was sent, but the verification email could not be sent: ' +
+                        (verificationError.message || 'Unknown error'));
+                    showRequestStatusLink(requestId, email);
+                    btn.disabled = false;
+                    btnText.innerText = 'Sign Up';
+                    return;
+                }
+
+                window.location.href = `PendingApproval.html?req=${encodeURIComponent(requestId)}&email=${encodeURIComponent(email)}`;
             } catch (err) {
                 console.error(err);
                 const details = err.text || err.message || 'Unknown error';
                 if (requestSaved) {
-                    showError('Your request was saved, but the approval email could not be sent: ' + details);
-                    const statusLink = document.getElementById('request-status-link');
-                    statusLink.href = `PendingApproval.html?req=${encodeURIComponent(requestId)}`;
-                    statusLink.classList.remove('hidden');
+                    showError('Your request was saved, but setup could not finish: ' + details);
+                    showRequestStatusLink(requestId, email);
                 } else {
                     showError('Failed to save your approval request: ' + details);
                 }

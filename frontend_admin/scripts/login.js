@@ -17,6 +17,17 @@ const db = firebase.database();
 const MAIN_ADMIN_EMAIL = 'cartpunch.security@gmail.com';
 const errorDiv = document.getElementById('error-message');
 const errorText = document.getElementById('error-text');
+const approvalNotice = document.getElementById('approval-notice');
+const loginParams = new URLSearchParams(window.location.search);
+const approvedEmail = loginParams.get('email');
+const approvedRequestId = loginParams.get('req');
+
+if (approvedEmail && approvedEmail.includes('@')) {
+    document.getElementById('email').value = approvedEmail;
+}
+if (loginParams.get('approved') === '1') {
+    approvalNotice.classList.remove('hidden');
+}
 
 function showLoginError(message) {
     errorText.textContent = message;
@@ -32,8 +43,35 @@ auth.onAuthStateChanged(async user => {
                 await auth.signOut();
                 return showLoginError('Verify your email address before signing in.');
             }
-            const profile = await db.ref(`admins/${user.uid}`).once('value');
-            if (!profile.exists() || profile.val().role !== 'admin') {
+            let profile = (await db.ref(`admins/${user.uid}`).once('value')).val();
+            if (!profile) {
+                if (!approvedRequestId || !/^[A-Za-z0-9_-]+$/.test(approvedRequestId)) {
+                    await auth.signOut();
+                    return showLoginError('This account has not been approved as an admin.');
+                }
+
+                const requestSnapshot = await db.ref(`pending_admin_requests/${approvedRequestId}`).once('value');
+                const request = requestSnapshot.val();
+                if (!request || request.status !== 'approved' ||
+                    request.email.toLowerCase() !== user.email.toLowerCase() ||
+                    (request.uid && request.uid !== user.uid)) {
+                    await auth.signOut();
+                    return showLoginError('This account has not been approved as an admin.');
+                }
+
+                profile = {
+                    requestId: approvedRequestId,
+                    name: request.name,
+                    position: request.position,
+                    department: request.department,
+                    email: user.email,
+                    role: 'admin',
+                    approvedBy: request.resolvedBy || 'Main Admin',
+                    approvedAt: request.approvedAt
+                };
+                await db.ref(`admins/${user.uid}`).set(profile);
+            }
+            if (profile.role !== 'admin') {
                 await auth.signOut();
                 return showLoginError('This account has not been approved as an admin.');
             }
