@@ -41,6 +41,9 @@
         "productBarcode": {
           ".validate": "newData.isString() && newData.val().length <= 256"
         },
+        "type": {
+          ".validate": "newData.isString() && (newData.val() === 'login' || newData.val() === 'logout' || newData.val() === 'product_created' || newData.val() === 'product_updated' || newData.val() === 'product_deleted')"
+        },
         "$other": {
           ".validate": false
         }
