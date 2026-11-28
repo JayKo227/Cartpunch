@@ -60,6 +60,10 @@
                     <i data-lucide="shopping-cart" class="w-5 h-5"></i>
                     <span>Cart Management</span>
                 </button>
+                <button id="nav-monitoring" onclick="switchTab('monitoring')" class="w-full flex items-center space-x-3 px-4 py-3 rounded-md font-medium text-sm transition-all text-white/90 hover:bg-white/10 hover:text-white">
+                    <i data-lucide="activity" class="w-5 h-5"></i>
+                    <span>Monitoring</span>
+                </button>
             </nav>
         </div>
 
@@ -268,12 +272,6 @@
                         <input id="search-input" oninput="filterProducts()" type="text" placeholder="Search by Barcode or Name..." class="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 shadow-sm">
                     </div>
                     <div class="flex items-center space-x-3 overflow-x-auto pb-1 hide-scrollbar">
-                        <select id="filter-stock" onchange="filterProducts()" oninput="filterProducts()" class="px-4 py-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:border-brand-500 font-semibold shadow-sm cursor-pointer hover:bg-slate-50 transition-colors">
-                            <option value="All">All Stock</option>
-                            <option value="High Stock">High Stock</option>
-                            <option value="Moderate Stock">Moderate Stock</option>
-                            <option value="Low Stock">Low Stock</option>
-                        </select>
                         <select id="sort-by" onchange="filterProducts()" oninput="filterProducts()" class="px-4 py-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:border-brand-500 font-semibold shadow-sm cursor-pointer hover:bg-slate-50 transition-colors">
                             <option value="default">Default Sort</option>
                             <option value="name-asc">Name (A-Z)</option>
@@ -295,13 +293,12 @@
                                 <th class="p-4 pl-6">Barcode ID</th>
                                 <th class="p-4">Product Name</th>
                                 <th class="p-4">Price (₱)</th>
-                                <th class="p-4">Stock Level</th>
                                 <th class="p-4 text-right pr-6">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="products-table-body" class="divide-y divide-slate-100">
                             <tr>
-                                <td colspan="5" class="p-8 text-center text-slate-400 font-medium">Loading products from
+                                <td colspan="4" class="p-8 text-center text-slate-400 font-medium">Loading products from
                                     Firebase...</td>
                             </tr>
                         </tbody>
@@ -491,6 +488,48 @@
                 </div>
             </div>
 
+            <!-- Monitoring View -->
+            <div id="view-monitoring" class="hidden space-y-6 animate-fade-in">
+                <div class="flex flex-wrap justify-between items-start gap-4">
+                    <div>
+                        <h2 class="text-3xl font-bold text-slate-800">Monitoring</h2>
+                        <p class="text-sm text-slate-500 mt-2">Live admin sign-ins and product management activity.</p>
+                    </div>
+                    <div id="monitoring-connection" class="flex items-center space-x-2 bg-emerald-50 text-emerald-700 px-4 py-2 rounded-full text-sm font-semibold border border-emerald-100">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span>Realtime connected</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+                        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Total Events</p>
+                        <p id="monitoring-total-count" class="text-2xl font-extrabold text-slate-800 mt-2">0</p>
+                    </div>
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+                        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Admin Logins</p>
+                        <p id="monitoring-login-count" class="text-2xl font-extrabold text-emerald-600 mt-2">0</p>
+                    </div>
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+                        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Product Changes</p>
+                        <p id="monitoring-product-count" class="text-2xl font-extrabold text-brand-500 mt-2">0</p>
+                    </div>
+                </div>
+
+                <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-5 border-b border-slate-100 flex flex-wrap justify-between items-center gap-2">
+                        <div>
+                            <h3 class="font-bold text-slate-800">Activity Log</h3>
+                            <p class="text-xs text-slate-500 mt-1">Latest 100 events. Expand a card to view user and event details.</p>
+                        </div>
+                        <span class="text-xs text-slate-400 font-semibold">Live from Firebase</span>
+                    </div>
+                    <div id="monitoring-list" class="max-h-[calc(100vh-340px)] min-h-48 overflow-y-auto p-4 space-y-3">
+                        <p class="text-sm text-slate-400 text-center py-8">Loading monitoring events...</p>
+                    </div>
+                </section>
+            </div>
+
         </div>
     </main>
 
@@ -517,21 +556,10 @@
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Product Name</label>
                     <input id="input-name" type="text" required placeholder="e.g. Century Tuna Flakes 155g" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Price
-                            (₱)</label>
-                        <input id="input-price" type="number" step="0.01" min="0" required placeholder="56.60"
-                            class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 font-mono">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Stock Level</label>
-                        <select id="input-stock" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
-                            <option value="High Stock">High Stock</option>
-                            <option value="Moderate Stock">Moderate Stock</option>
-                            <option value="Low Stock">Low Stock</option>
-                        </select>
-                    </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Price (₱)</label>
+                    <input id="input-price" type="number" step="0.01" min="0" required placeholder="56.60"
+                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 font-mono">
                 </div>
                 <div class="pt-4 flex space-x-3">
                     <button type="button" onclick="closeProductModal()"
@@ -577,6 +605,8 @@
         const db = firebase.database();
 
         const MAIN_ADMIN_EMAIL = 'cartpunch.security@gmail.com';
+        let currentAdminProfile = {};
+        let monitoringListenerAttached = false;
 
         // Enforce authentication and an approved admin profile.
         auth.onAuthStateChanged(async user => {
@@ -586,17 +616,26 @@
             }
 
             try {
-                if (user.email === MAIN_ADMIN_EMAIL) return;
-                if (!user.emailVerified) {
-                    await auth.signOut();
-                    window.location.replace('Login.html');
-                    return;
+                let profile = {};
+                if (user.email === MAIN_ADMIN_EMAIL) {
+                    const profileSnapshot = await db.ref(`admins/${user.uid}`).once('value');
+                    profile = profileSnapshot.val() || {};
+                } else {
+                    if (!user.emailVerified) {
+                        await auth.signOut();
+                        window.location.replace('Login.html');
+                        return;
+                    }
+                    const profileSnapshot = await db.ref(`admins/${user.uid}`).once('value');
+                    profile = profileSnapshot.val();
+                    if (!profile || profile.role !== 'admin') {
+                        await auth.signOut();
+                        window.location.replace('Login.html');
+                        return;
+                    }
                 }
-                const profile = await db.ref(`admins/${user.uid}`).once('value');
-                if (!profile.exists() || profile.val().role !== 'admin') {
-                    await auth.signOut();
-                    window.location.replace('Login.html');
-                }
+                currentAdminProfile = profile;
+                subscribeToMonitoring();
             } catch (error) {
                 console.error('Could not verify admin access:', error);
                 await auth.signOut();
@@ -613,20 +652,15 @@
         // Ensure state persists across reloads and URL hash changes
         document.addEventListener("DOMContentLoaded", () => {
             let savedTab = window.location.hash.replace('#', '');
-            if (!['dashboard', 'inventory', 'carts'].includes(savedTab)) {
+            if (!['dashboard', 'inventory', 'carts', 'monitoring'].includes(savedTab)) {
                 savedTab = localStorage.getItem("cartpunch_admin_tab") || "dashboard";
             }
             switchTab(savedTab);
-            
-            // Add initial dummy activity logs mimicking the mockup
-            addActivityLog("10:42 AM", "Price updated for 'Nescafe Classic 25g'", "amber");
-            addActivityLog("09:15 AM", "New barcode registered: 4801981110005", "emerald");
-            addActivityLog("Yesterday", "Category 'Snack Dips' modified", "slate");
         });
 
         window.addEventListener('hashchange', () => {
             const hash = window.location.hash.replace('#', '');
-            if (['dashboard', 'inventory', 'carts'].includes(hash)) {
+            if (['dashboard', 'inventory', 'carts', 'monitoring'].includes(hash)) {
                 switchTab(hash, false);
             }
         });
@@ -740,20 +774,135 @@
             }
         }
 
+        function subscribeToMonitoring() {
+            if (monitoringListenerAttached) return;
+            monitoringListenerAttached = true;
+            db.ref('monitoring').orderByChild('timestamp').limitToLast(100).on(
+                'value',
+                renderMonitoringEvents,
+                error => {
+                    console.error('Firebase monitoring listener error:', error);
+                    const connection = document.getElementById('monitoring-connection');
+                    connection.className = 'flex items-center space-x-2 bg-rose-50 text-rose-700 px-4 py-2 rounded-full text-sm font-semibold border border-rose-100';
+                    connection.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-500"></span><span>Monitoring unavailable</span>';
+                    document.getElementById('monitoring-list').innerHTML =
+                        '<p class="text-sm text-rose-600 text-center py-8">Could not load monitoring events. Check your connection and admin access.</p>';
+                }
+            );
+        }
+
+        function renderMonitoringEvents(snapshot) {
+            const data = snapshot.val() || {};
+            const events = Object.keys(data)
+                .map(key => ({ ...data[key], eventId: key }))
+                .filter(event => event && typeof event === 'object')
+                .sort((a, b) => (Number(b.timestamp) || 0) - (Number(a.timestamp) || 0));
+            const loginCount = events.filter(event => event.type === 'login').length;
+            const productCount = events.filter(event => event.type && event.type.startsWith('product_')).length;
+
+            document.getElementById('monitoring-total-count').innerText = events.length.toLocaleString();
+            document.getElementById('monitoring-login-count').innerText = loginCount.toLocaleString();
+            document.getElementById('monitoring-product-count').innerText = productCount.toLocaleString();
+
+            const list = document.getElementById('monitoring-list');
+            if (events.length === 0) {
+                list.innerHTML = '<p class="text-sm text-slate-400 text-center py-8">No monitoring events recorded yet.</p>';
+                return;
+            }
+
+            const labels = {
+                login: 'Admin login',
+                product_created: 'Product created',
+                product_updated: 'Product updated',
+                product_deleted: 'Product deleted'
+            };
+            const colors = {
+                login: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+                product_created: 'bg-blue-50 text-blue-700 border-blue-100',
+                product_updated: 'bg-amber-50 text-amber-700 border-amber-100',
+                product_deleted: 'bg-rose-50 text-rose-700 border-rose-100'
+            };
+
+            list.innerHTML = events.map(event => {
+                const timestamp = Number(event.timestamp);
+                const time = Number.isFinite(timestamp)
+                    ? new Date(timestamp).toLocaleString()
+                    : 'Time unavailable';
+                const label = labels[event.type] || 'Activity';
+                const color = colors[event.type] || 'bg-slate-50 text-slate-700 border-slate-100';
+                const displayName = event.displayName || event.email || 'Unknown admin';
+                const userDetails = [
+                    event.position,
+                    event.department
+                ].filter(Boolean).map(escapeHtml).join(' · ');
+
+                return `
+                    <details class="group rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-colors">
+                        <summary class="list-none cursor-pointer p-4 flex flex-wrap items-center justify-between gap-3">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <span class="px-2.5 py-1 rounded-full border text-xs font-bold ${color}">${escapeHtml(label)}</span>
+                                <div class="min-w-0">
+                                    <span class="font-semibold text-sm text-slate-800 truncate">${escapeHtml(displayName)}</span>
+                                    <span class="block text-xs text-slate-500 truncate">${escapeHtml(event.email || 'Email unavailable')}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3 text-xs text-slate-500">
+                                <time>${escapeHtml(time)}</time>
+                                <i data-lucide="chevron-down" class="w-4 h-4 transition-transform group-open:rotate-180"></i>
+                            </div>
+                        </summary>
+                        <div class="border-t border-slate-100 px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                            <p><span class="font-semibold text-slate-500">User:</span> <span class="text-slate-800">${escapeHtml(displayName)}</span></p>
+                            <p><span class="font-semibold text-slate-500">Email:</span> <span class="text-slate-800">${escapeHtml(event.email || 'Not provided')}</span></p>
+                            <p><span class="font-semibold text-slate-500">Position / department:</span> <span class="text-slate-800">${userDetails || 'Not provided'}</span></p>
+                            <p><span class="font-semibold text-slate-500">Time:</span> <span class="text-slate-800">${escapeHtml(time)}</span></p>
+                            <p class="sm:col-span-2"><span class="font-semibold text-slate-500">Details:</span> <span class="text-slate-800">${escapeHtml(event.details || 'No additional details')}</span></p>
+                        </div>
+                    </details>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function createMonitoringEvent(type, details, product = {}) {
+            const user = auth.currentUser;
+            if (!user) {
+                throw new Error('No authenticated admin is available to record this change.');
+            }
+
+            const event = {
+                type,
+                uid: user.uid,
+                email: user.email || currentAdminProfile.email || '',
+                displayName: currentAdminProfile.name || user.displayName || user.email || 'Unknown admin',
+                position: currentAdminProfile.position || '',
+                department: currentAdminProfile.department || '',
+                timestamp: Date.now(),
+                details
+            };
+            if (product.name) event.productName = product.name;
+            if (product.barcode) event.productBarcode = product.barcode;
+
+            const eventRef = db.ref('monitoring').push();
+            return {
+                path: `monitoring/${eventRef.key}`,
+                value: event
+            };
+        }
+
+        async function writeMonitoringEvent(event) {
+            try {
+                await db.ref(event.path).set(event.value);
+                return { ok: true };
+            } catch (error) {
+                console.error('Could not write monitoring event:', error);
+                return { ok: false, error };
+            }
+        }
+
         let currentFilteredProducts = [];
         let currentPage = 1;
         const ITEMS_PER_PAGE = 100;
-
-        function getStockStatus(stock) {
-            if (stock === 'Low Stock' || stock === 'Moderate Stock' || stock === 'High Stock') {
-                return stock;
-            }
-            if (stock == null || isNaN(stock)) return 'High Stock';
-            const quantity = parseFloat(stock);
-            if (quantity < 20) return 'Low Stock';
-            if (quantity < 50) return 'Moderate Stock';
-            return 'High Stock';
-        }
 
         function renderProducts(list, page = 1) {
             currentPage = page;
@@ -764,7 +913,7 @@
             const paginationContainer = document.getElementById('pagination-controls');
 
             if (list.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400 font-medium">No matching products found.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-400 font-medium">No matching products found.</td></tr>`;
                 if (paginationContainer) paginationContainer.classList.add('hidden');
                 return;
             }
@@ -776,19 +925,11 @@
 
             tbody.innerHTML = displayList.map(item => {
                 const encodedKey = encodeURIComponent(item.dbKey);
-                const stockStatus = getStockStatus(item.stock);
                 return `
                 <tr class="hover:bg-slate-50 transition-colors group">
                     <td class="p-4 pl-6 font-mono font-medium text-slate-500">${escapeHtml(item.barcode)}</td>
                     <td class="p-4 font-bold text-slate-800">${escapeHtml(item.name)}</td>
                     <td class="p-4 font-mono text-slate-700 font-semibold">₱${parseFloat(item.price || 0).toFixed(2)}</td>
-                    <td class="p-4">
-                        <span class="px-2.5 py-1 rounded-md text-xs font-bold shadow-sm ${
-                            stockStatus === 'High Stock' ? 'bg-green-500 text-white border border-green-600' :
-                            stockStatus === 'Moderate Stock' ? 'bg-yellow-400 text-yellow-900 border border-yellow-500' :
-                            'bg-red-500 text-white border border-red-600'
-                    }">${escapeHtml(stockStatus)}</span>
-                    </td>
                     <td class="p-4 text-right pr-6 space-x-1">
                         <button type="button" onclick="editProduct(decodeURIComponent('${encodedKey}'))" title="Edit Product" class="p-2 text-slate-400 hover:text-brand-500 hover:bg-brand-50 rounded-md transition-all"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
                         <button type="button" onclick="deleteProduct(decodeURIComponent('${encodedKey}'))" title="Delete Product" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
@@ -844,8 +985,6 @@
         function filterProducts(resetPage = true) {
             const searchInput = document.getElementById('search-input');
             const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
-            const stockSelect = document.getElementById('filter-stock');
-            const stockFilter = stockSelect ? stockSelect.value : 'All';
             const sortSelect = document.getElementById('sort-by');
             const sortBy = sortSelect ? sortSelect.value : 'default';
 
@@ -854,9 +993,7 @@
                 const barcode = (p.barcode || '').toString().toLowerCase();
                 const name = (p.name || '').toString().toLowerCase();
                 const matchesSearch = !query || barcode.includes(query) || name.includes(query);
-                const stockStatus = getStockStatus(p.stock);
-                const matchesStock = (stockFilter === 'All' || stockStatus === stockFilter);
-                return matchesSearch && matchesStock;
+                return matchesSearch;
             });
 
             // 2. Sort the array
@@ -885,7 +1022,7 @@
                 history.pushState(null, null, `#${tab}`);
             }
             
-            ['dashboard', 'inventory', 'carts'].forEach(t => {
+            ['dashboard', 'inventory', 'carts', 'monitoring'].forEach(t => {
                 document.getElementById(`view-${t}`).classList.add('hidden');
                 document.getElementById(`nav-${t}`).className = 'w-full flex items-center space-x-3 px-4 py-3 rounded-md font-medium text-sm transition-all text-white/90 hover:bg-white/10 hover:text-white';
             });
@@ -919,7 +1056,6 @@
             document.getElementById('input-barcode').disabled = false;
             document.getElementById('input-name').value = '';
             document.getElementById('input-price').value = '';
-            document.getElementById('input-stock').value = 'High Stock';
             document.getElementById('product-modal').classList.remove('hidden');
         }
 
@@ -938,7 +1074,6 @@
             document.getElementById('input-barcode').disabled = false;
             document.getElementById('input-name').value = prod.name;
             document.getElementById('input-price').value = prod.price;
-            document.getElementById('input-stock').value = getStockStatus(prod.stock);
             document.getElementById('product-modal').classList.remove('hidden');
         }
 
@@ -953,7 +1088,6 @@
             const newBarcode = document.getElementById('input-barcode').value.trim();
             const name = document.getElementById('input-name').value.trim();
             const price = parseFloat(document.getElementById('input-price').value);
-            const stock = document.getElementById('input-stock').value;
 
             if (!newBarcode || !name || isNaN(price) || price < 0) {
                 return showProductModalError('Please enter a valid barcode number, product name, and non-negative price.');
@@ -980,9 +1114,11 @@
                 item_description: name,
                 price: roundedPrice,
                 unit_price: roundedPrice,
-                stock: stock,
                 updatedAt: Date.now()
             };
+            if (existingProduct && Object.prototype.hasOwnProperty.call(existingProduct, 'stock')) {
+                productData.stock = existingProduct.stock;
+            }
             if (existingProduct && existingProduct.category) {
                 productData.category = existingProduct.category;
             }
@@ -996,15 +1132,43 @@
                     updates[editingKey] = null;
                 }
                 updates[newBarcode] = productData;
-
+                await auth.currentUser.getIdToken(true);
                 await db.ref('products').update(updates);
+
                 const now = new Date();
+                const actionType = editingKey ? 'product_updated' : 'product_created';
                 const logLabel = editingKey
                     ? (editingKey !== newBarcode ? `Updated ${editingKey} -> ${newBarcode}: ${name}` : `Updated ${newBarcode}: ${name}`)
                     : `Added ${newBarcode}: ${name}`;
                 addActivityLog(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), logLabel, 'emerald');
+                const changes = [];
+                if (existingProduct) {
+                    if (existingProduct.name !== name) {
+                        changes.push(`name changed from "${existingProduct.name}" to "${name}"`);
+                    }
+                    if (Number(existingProduct.price) !== roundedPrice) {
+                        changes.push(`price changed from ₱${Number(existingProduct.price || 0).toFixed(2)} to ₱${roundedPrice.toFixed(2)}`);
+                    }
+                    if (existingProduct.barcode !== newBarcode) {
+                        changes.push(`barcode changed from "${existingProduct.barcode}" to "${newBarcode}"`);
+                    }
+                }
+                const eventDetails = existingProduct
+                    ? `Updated product "${name}" (${newBarcode})${changes.length ? `: ${changes.join('; ')}.` : '.'}`
+                    : `Created product "${name}" (${newBarcode}) at ₱${roundedPrice.toFixed(2)}.`;
+                const monitoringEvent = createMonitoringEvent(
+                    actionType,
+                    eventDetails,
+                    { name, barcode: newBarcode }
+                );
+                const logResult = await writeMonitoringEvent(monitoringEvent);
                 closeProductModal();
-                showToast(`${editingKey ? 'Updated' : 'Added'} "${name}" (${newBarcode}) in Firebase`);
+                showToast(
+                    logResult.ok
+                        ? `${editingKey ? 'Updated' : 'Added'} "${name}" (${newBarcode}) and recorded the activity in Firebase`
+                        : `Product saved, but monitoring logging failed: ${logResult.error.message}`,
+                    !logResult.ok
+                );
             } catch (error) {
                 console.error("Firebase save error:", error);
                 showProductModalError("Error saving to Firebase: " + error.message);
@@ -1028,10 +1192,22 @@
             }
 
             try {
+                await auth.currentUser.getIdToken(true);
+                const monitoringEvent = createMonitoringEvent(
+                    'product_deleted',
+                    `Deleted product "${label}".`,
+                    { name: prod ? prod.name : '', barcode: prod ? prod.barcode : targetKey }
+                );
                 await db.ref(`products/${targetKey}`).remove();
                 const now = new Date();
                 addActivityLog(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), `Deleted product: ${label}`, 'rose');
-                showToast(`Deleted "${label}" from Firebase`);
+                const logResult = await writeMonitoringEvent(monitoringEvent);
+                showToast(
+                    logResult.ok
+                        ? `Deleted "${label}" and recorded the activity in Firebase`
+                        : `Product deleted, but monitoring logging failed: ${logResult.error.message}`,
+                    !logResult.ok
+                );
             } catch (error) {
                 console.error("Firebase delete error:", error);
                 showToast("Error deleting product: " + error.message, true);

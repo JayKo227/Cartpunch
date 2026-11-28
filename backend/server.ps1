@@ -1,5 +1,6 @@
 $rootDir = Split-Path -Parent $PSScriptRoot
 $adminDir = Join-Path $rootDir "frontend_admin"
+$adminBuildId = "20261128-1027"
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add("http://localhost:8088/")
 $listener.Start()
@@ -12,8 +13,18 @@ while ($listener.IsListening) {
         $context = $listener.GetContext()
         $request = $context.Request
         $response = $context.Response
+        $response.Headers.Set("Cache-Control", "no-store, no-cache, must-revalidate")
+        $response.Headers.Set("Pragma", "no-cache")
+        $response.Headers.Set("Expires", "0")
 
         $path = $request.Url.AbsolutePath
+        if (($path -eq "/Admin" -or $path -eq "/Admin.html") -and $request.QueryString["build"] -ne $adminBuildId) {
+            $response.StatusCode = 302
+            $response.RedirectLocation = "/Admin.html?build=$adminBuildId"
+            $response.Close()
+            continue
+        }
+
         if ($path -eq "/" -or $path -eq "/Monitor" -or $path -eq "/Monitor.html") {
             $file = Join-Path $rootDir "frontend_monitor\Monitor.html"
         } elseif ($path -eq "/Admin" -or $path -eq "/Admin.html") {

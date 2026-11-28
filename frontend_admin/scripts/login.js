@@ -21,6 +21,7 @@ const approvalNotice = document.getElementById('approval-notice');
 const loginParams = new URLSearchParams(window.location.search);
 const approvedEmail = loginParams.get('email');
 const approvedRequestId = loginParams.get('req');
+let signInRequested = false;
 
 if (approvedEmail && approvedEmail.includes('@')) {
     document.getElementById('email').value = approvedEmail;
@@ -38,6 +39,7 @@ auth.onAuthStateChanged(async user => {
     if (!user) return;
 
     try {
+        let adminProfile = {};
         if (user.email !== MAIN_ADMIN_EMAIL) {
             if (!user.emailVerified) {
                 await auth.signOut();
@@ -75,6 +77,28 @@ auth.onAuthStateChanged(async user => {
                 await auth.signOut();
                 return showLoginError('This account has not been approved as an admin.');
             }
+            adminProfile = profile;
+        } else {
+            const profileSnapshot = await db.ref(`admins/${user.uid}`).once('value');
+            adminProfile = profileSnapshot.val() || {};
+        }
+        if (signInRequested) {
+            try {
+                await db.ref('monitoring').push().set({
+                    type: 'login',
+                    uid: user.uid,
+                    email: user.email || '',
+                    displayName: adminProfile.name || user.displayName || user.email || 'Unknown admin',
+                    position: adminProfile.position || '',
+                    department: adminProfile.department || '',
+                    timestamp: Date.now(),
+                    details: 'Admin signed in.'
+                });
+            } catch (error) {
+                console.error('Could not record admin login:', error);
+                showLoginError('Signed in, but login activity could not be recorded: ' + error.message);
+            }
+            signInRequested = false;
         }
         window.location.href = 'Admin.html';
     } catch (error) {
@@ -98,9 +122,11 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
     btn.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i><span>Signing in...</span>';
     lucide.createIcons();
     errorDiv.classList.add('hidden');
+    signInRequested = true;
 
     auth.signInWithEmailAndPassword(email, password)
         .catch((error) => {
+            signInRequested = false;
             errorDiv.classList.remove('hidden');
             errorText.textContent = error.message;
             btn.innerHTML = '<span>Sign In</span><i data-lucide="arrow-right" class="w-4 h-4"></i>';

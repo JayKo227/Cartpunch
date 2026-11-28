@@ -4,7 +4,45 @@
     ".write": false,
     "products": {
       ".read": true,
-      ".write": "auth != null && (auth.token.email === 'cartpunch.security@gmail.com' || (auth.token.email_verified === true && root.child('admins').child(auth.uid).child('role').val() === 'admin'))"
+      ".write": "auth != null && (auth.token.email === 'cartpunch.security@gmail.com' || root.child('admins').child(auth.uid).child('role').val() === 'admin')"
+    },
+    "monitoring": {
+      ".read": "auth != null && (auth.token.email === 'cartpunch.security@gmail.com' || root.child('admins').child(auth.uid).child('role').val() === 'admin')",
+      ".indexOn": ["timestamp"],
+      "$eventId": {
+        ".write": "auth != null && (auth.token.email === 'cartpunch.security@gmail.com' || root.child('admins').child(auth.uid).child('role').val() === 'admin') && !data.exists() && newData.exists()",
+        ".validate": "newData.hasChildren(['type', 'uid', 'email', 'displayName', 'position', 'department', 'timestamp', 'details']) && newData.child('uid').val() === auth.uid && (newData.child('type').val() === 'login' || newData.child('type').val() === 'product_created' || newData.child('type').val() === 'product_updated' || newData.child('type').val() === 'product_deleted')",
+        "uid": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128"
+        },
+        "email": {
+          ".validate": "newData.isString() && newData.val().length <= 254"
+        },
+        "displayName": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200"
+        },
+        "position": {
+          ".validate": "newData.isString() && newData.val().length <= 200"
+        },
+        "department": {
+          ".validate": "newData.isString() && newData.val().length <= 200"
+        },
+        "timestamp": {
+          ".validate": "newData.isNumber()"
+        },
+        "details": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 2000"
+        },
+        "productName": {
+          ".validate": "newData.isString() && newData.val().length <= 500"
+        },
+        "productBarcode": {
+          ".validate": "newData.isString() && newData.val().length <= 256"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
     },
     "transactions": {
       ".read": "auth != null",
@@ -30,7 +68,7 @@
       "$reqId": {
         ".read": "auth != null && (auth.token.email === 'cartpunch.security@gmail.com' || (auth.uid === data.child('uid').val() && auth.token.email === data.child('email').val()) || (auth.token.email_verified === true && auth.token.email === data.child('email').val() && data.child('status').val() === 'approved'))",
         ".write": "auth != null && (auth.token.email === 'cartpunch.security@gmail.com' || (!data.exists() && auth.uid === newData.child('uid').val() && auth.token.email === newData.child('email').val()) || (auth.uid === data.child('uid').val() && auth.token.email === data.child('email').val() && data.child('status').val() === 'pending' && newData.child('status').val() === 'cancelled' && newData.child('uid').val() === data.child('uid').val() && newData.child('name').val() === data.child('name').val() && newData.child('position').val() === data.child('position').val() && newData.child('department').val() === data.child('department').val() && newData.child('email').val() === data.child('email').val() && newData.child('createdAt').val() === data.child('createdAt').val() && newData.child('expiresAt').val() === data.child('expiresAt').val() && newData.child('approvedAt').val() === data.child('approvedAt').val() && newData.child('resolvedBy').val() === data.child('resolvedBy').val() && newData.child('resolvedAt').isNumber()))",
-        ".validate": "newData.hasChildren(['name', 'position', 'department', 'email', 'status', 'createdAt', 'expiresAt']) && newData.numChildren() <= 10 && !newData.child('password').exists() && (auth != null && auth.token.email === 'cartpunch.security@gmail.com' || (auth != null && !data.exists() && auth.uid === newData.child('uid').val() && auth.token.email === newData.child('email').val() && newData.child('status').val() === 'pending' && newData.child('createdAt').val() <= now && newData.child('expiresAt').val() > now && newData.child('expiresAt').val() <= now + 600000) || (auth != null && auth.uid === data.child('uid').val() && auth.token.email === data.child('email').val() && data.child('status').val() === 'pending' && newData.child('status').val() === 'cancelled' && newData.child('uid').val() === data.child('uid').val() && newData.child('name').val() === data.child('name').val() && newData.child('position').val() === data.child('position').val() && newData.child('department').val() === data.child('department').val() && newData.child('email').val() === data.child('email').val() && newData.child('createdAt').val() === data.child('createdAt').val() && newData.child('expiresAt').val() === data.child('expiresAt').val() && newData.child('approvedAt').val() === data.child('approvedAt').val() && newData.child('resolvedBy').val() === data.child('resolvedBy').val() && newData.child('resolvedAt').isNumber()))",
+        ".validate": "newData.hasChildren(['name', 'position', 'department', 'email', 'status', 'createdAt', 'expiresAt']) && !newData.child('password').exists() && (auth != null && auth.token.email === 'cartpunch.security@gmail.com' || (auth != null && !data.exists() && auth.uid === newData.child('uid').val() && auth.token.email === newData.child('email').val() && newData.child('status').val() === 'pending' && newData.child('createdAt').val() <= now && newData.child('expiresAt').val() > now && newData.child('expiresAt').val() <= now + 600000) || (auth != null && auth.uid === data.child('uid').val() && auth.token.email === data.child('email').val() && data.child('status').val() === 'pending' && newData.child('status').val() === 'cancelled' && newData.child('uid').val() === data.child('uid').val() && newData.child('name').val() === data.child('name').val() && newData.child('position').val() === data.child('position').val() && newData.child('department').val() === data.child('department').val() && newData.child('email').val() === data.child('email').val() && newData.child('createdAt').val() === data.child('createdAt').val() && newData.child('expiresAt').val() === data.child('expiresAt').val() && newData.child('approvedAt').val() === data.child('approvedAt').val() && newData.child('resolvedBy').val() === data.child('resolvedBy').val() && newData.child('resolvedAt').isNumber()))",
         "uid": {
           ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{1,128}$/)"
         },
@@ -63,6 +101,9 @@
         },
         "resolvedBy": {
           ".validate": "newData.isString() && newData.val().length <= 254"
+        },
+        "$other": {
+          ".validate": false
         }
       }
     },
@@ -70,7 +111,7 @@
       "$reqId": {
         ".read": true,
         ".write": "auth != null && (auth.token.email === 'cartpunch.security@gmail.com' || (!data.exists() && auth.token.email === root.child('pending_admin_requests').child($reqId).child('email').val() && root.child('pending_admin_requests').child($reqId).child('status').val() === 'pending' && newData.child('status').val() === 'pending') || (auth.uid === root.child('pending_admin_requests').child($reqId).child('uid').val() && auth.token.email === root.child('pending_admin_requests').child($reqId).child('email').val() && data.child('status').val() === 'pending' && newData.child('status').val() === 'cancelled' && newData.child('expiresAt').val() === data.child('expiresAt').val() && newData.child('resolvedAt').isNumber()))",
-        ".validate": "newData.hasChildren(['status', 'expiresAt']) && newData.numChildren() <= 3",
+        ".validate": "newData.hasChildren(['status', 'expiresAt'])",
         "status": {
           ".validate": "newData.val() === 'pending' && !data.exists() || auth != null && auth.token.email === 'cartpunch.security@gmail.com' && data.val() === 'pending' && ((newData.val() === 'expired' && root.child('pending_admin_requests').child($reqId).child('expiresAt').val() <= now) || ((newData.val() === 'approved' || newData.val() === 'rejected') && root.child('pending_admin_requests').child($reqId).child('expiresAt').val() > now)) || auth != null && auth.uid === root.child('pending_admin_requests').child($reqId).child('uid').val() && auth.token.email === root.child('pending_admin_requests').child($reqId).child('email').val() && data.val() === 'pending' && newData.val() === 'cancelled'"
         },
@@ -79,6 +120,9 @@
         },
         "resolvedAt": {
           ".validate": "newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
         }
       }
     },
@@ -87,9 +131,12 @@
         "$uid": {
           ".read": "auth != null && auth.uid === $uid",
           ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('pending_admin_requests').child($reqId).child('uid').val() === auth.uid && root.child('pending_admin_requests').child($reqId).child('status').val() === 'pending' && root.child('pending_admin_requests').child($reqId).child('expiresAt').val() > now",
-          ".validate": "newData.hasChildren(['requestedAt']) && newData.numChildren() === 1",
+            ".validate": "newData.hasChildren(['requestedAt'])",
           "requestedAt": {
             ".validate": "newData.isNumber() && newData.val() <= now"
+            },
+            "$other": {
+              ".validate": false
             }
           }
         }
