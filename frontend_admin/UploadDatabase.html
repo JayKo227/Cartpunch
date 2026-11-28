@@ -23,6 +23,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="scripts/session-timeout.js"></script>
     <!-- SheetJS: reads .xls and .xlsx in the browser -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <style>
@@ -244,6 +245,7 @@
                 document.getElementById('signed-in-as').textContent =
                     `Signed in as ${profile.name || user.email}${isMainAdmin ? ' (Main Admin)' : ''}`;
                 listenToHistory();
+                startSessionTimeout({ auth, db, user, profile });
             } catch (error) {
                 console.error(error);
                 showPageMessage('Could not verify admin access: ' + error.message, true);

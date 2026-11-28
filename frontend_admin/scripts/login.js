@@ -26,6 +26,10 @@ let signInRequested = false;
 if (approvedEmail && approvedEmail.includes('@')) {
     document.getElementById('email').value = approvedEmail;
 }
+if (loginParams.get('session') === 'expired') {
+    errorText.textContent = 'Your session ended after 48 hours. Please sign in again.';
+    errorDiv.classList.remove('hidden');
+}
 if (loginParams.get('approved') === '1') {
     approvalNotice.classList.remove('hidden');
 }

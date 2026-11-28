@@ -33,6 +33,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="scripts/session-timeout.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -727,6 +728,7 @@
                 showCurrentUser(user);
                 subscribeToMonitoring();
                 recordSessionLogin(user);
+                startSessionTimeout({ auth, db, user, profile: currentAdminProfile });
             } catch (error) {
                 console.error('Could not verify admin access:', error);
                 await auth.signOut();
