@@ -385,7 +385,9 @@
                 } else if (mode === 'price') {
                     action = samePrice(oldPrice, row.price) ? 'same' : 'price';
                 } else {
-                    action = (oldName === row.name && samePrice(oldPrice, row.price)) ? 'same' : 'update';
+                    // Spacing-only differences (e.g. double spaces in older data) are not real changes.
+                    const sameName = oldName.replace(/\s+/g, ' ').trim() === row.name;
+                    action = (sameName && samePrice(oldPrice, row.price)) ? 'same' : 'update';
                 }
                 return { ...row, before, oldName, oldPrice, action };
             });
