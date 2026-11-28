@@ -6,9 +6,9 @@
 // 1. DATABASE & NETWORK CONFIGURATION
 #define WIFI_SSID "YOUR_WIFI_NAME"
 #define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
-#define API_KEY "AIzaSyDnOqNF8U-uNKDQEZiR0AyMd6JAbFNEIFE"
+#define API_KEY "AIzaSyAnpeLs7fpfkWIxdlqttvd9N_kQM1fss0E"
 #define DATABASE_URL                                                           \
-  "https://cartpunch-5b2d8-default-rtdb.asia-southeast1.firebasedatabase.app/"
+  "https://cartpunch-a2267-default-rtdb.asia-southeast1.firebasedatabase.app/"
 
 FirebaseData fbdo;
 FirebaseAuth auth;

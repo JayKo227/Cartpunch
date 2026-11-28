@@ -31,53 +31,94 @@
     </style>
 </head>
 
-<body class="bg-surface h-screen flex items-center justify-center p-4 text-slate-800">
+<body class="bg-surface min-h-screen text-slate-800">
 
-    <div class="w-full max-w-md p-8 bg-white rounded-2xl shadow-xl border border-slate-100 text-center space-y-5">
-        <div id="status-icon"
-            class="w-16 h-16 mx-auto bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center">
-            <i data-lucide="clock" class="w-8 h-8 animate-pulse"></i>
+    <header class="bg-white border-b border-slate-100">
+        <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 bg-brand-500 rounded-xl flex items-center justify-center text-white">
+                    <i data-lucide="scan-line" class="w-5 h-5"></i>
+                </div>
+                <span class="text-lg font-extrabold tracking-tight">CartPunch Admin</span>
+            </div>
+            <span class="text-sm text-slate-500">Admin access request</span>
         </div>
+    </header>
 
-        <h1 id="status-title" class="text-2xl font-extrabold text-slate-800">Waiting for Main Admin Approval</h1>
-        <p id="status-desc" class="text-sm text-slate-500">
-            An approval request has been emailed to the Main Admin. Please keep this page open while they confirm.
-        </p>
+    <main class="max-w-5xl mx-auto px-6 py-12">
+        <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 overflow-hidden grid md:grid-cols-[3fr_2fr]">
+            <!-- Status -->
+            <section class="p-10 lg:p-12 space-y-6">
+                <div class="flex items-start space-x-5">
+                    <div id="status-icon"
+                        class="w-16 h-16 shrink-0 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center">
+                        <i data-lucide="clock" class="w-8 h-8 animate-pulse"></i>
+                    </div>
+                    <div>
+                        <h1 id="status-title" class="text-2xl lg:text-3xl font-extrabold text-slate-800 tracking-tight">Waiting for Main Admin Approval</h1>
+                        <p id="status-desc" class="text-sm text-slate-500 mt-2 leading-relaxed">
+                            An approval request has been emailed to the Main Admin. Please keep this page open while they confirm.
+                        </p>
+                    </div>
+                </div>
 
-        <div id="timer-box" class="bg-amber-50 border border-amber-200 rounded-xl py-3 px-4">
-            <p class="text-xs font-bold uppercase tracking-wider text-amber-700">Time Remaining</p>
-            <p id="countdown" class="text-2xl font-extrabold text-amber-800 mt-0.5">05:00</p>
+                <div id="pending-actions" class="space-y-3 pt-2">
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <button id="resend-button" type="button"
+                            class="flex-1 py-3 px-5 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                            Resend Approval Email
+                        </button>
+                        <button id="cancel-button" type="button"
+                            class="flex-1 py-3 px-5 bg-white hover:bg-slate-50 text-slate-600 font-bold rounded-lg border border-slate-200 transition-all disabled:opacity-50">
+                            Cancel Request / Back to Sign Up
+                        </button>
+                    </div>
+                    <p class="text-xs text-slate-400">You can resend the approval email once. Resending does not reset the timer.</p>
+                    <p id="action-message" class="hidden text-sm" role="status" aria-live="polite"></p>
+                </div>
+
+                <a id="action-link" href="Login.html"
+                    class="hidden py-3.5 px-8 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow-md transition-all inline-block">
+                    Proceed to Admin Login
+                </a>
+            </section>
+
+            <!-- Timer & steps -->
+            <aside class="bg-slate-50 border-t md:border-t-0 md:border-l border-slate-100 p-10 lg:p-12 flex flex-col justify-between gap-8">
+                <div id="timer-box" class="bg-amber-50 border border-amber-200 rounded-xl py-6 px-6 text-center">
+                    <p class="text-xs font-bold uppercase tracking-wider text-amber-700">Time Remaining</p>
+                    <p id="countdown" class="text-5xl font-extrabold text-amber-800 mt-2 tabular-nums">05:00</p>
+                    <p class="text-xs text-amber-700/80 mt-2">The request expires after 5 minutes.</p>
+                </div>
+
+                <ol class="space-y-4 text-sm">
+                    <li class="flex items-start space-x-3">
+                        <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-500 shrink-0"></i>
+                        <span class="text-slate-600">Sign-up details submitted</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                        <i data-lucide="mail" class="w-5 h-5 text-amber-500 shrink-0"></i>
+                        <span class="text-slate-600">Main Admin approves or rejects from the email</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                        <i data-lucide="log-in" class="w-5 h-5 text-slate-400 shrink-0"></i>
+                        <span class="text-slate-600">Sign in once approved</span>
+                    </li>
+                </ol>
+            </aside>
         </div>
-
-        <div id="pending-actions" class="space-y-3">
-            <button id="resend-button" type="button"
-                class="w-full py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                Resend Approval Email
-            </button>
-            <button id="cancel-button" type="button"
-                class="w-full py-3 bg-white hover:bg-slate-50 text-slate-600 font-bold rounded-lg border border-slate-200 transition-all">
-                Cancel Request / Back to Sign Up
-            </button>
-            <p id="action-message" class="hidden text-sm" role="status" aria-live="polite"></p>
-        </div>
-
-        <a id="action-link" href="Login.html"
-            class="hidden w-full py-3.5 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow-md transition-all inline-block">
-            Proceed to Admin Login
-        </a>
-    </div>
-
+    </main>
     <script>
         lucide.createIcons();
 
         const firebaseConfig = {
-            apiKey: "AIzaSyDnOqNF8U-uNKDQEZiR0AyMd6JAbFNEIFE",
-            authDomain: "cartpunch-5b2d8.firebaseapp.com",
-            databaseURL: "https://cartpunch-5b2d8-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "cartpunch-5b2d8",
-            storageBucket: "cartpunch-5b2d8.firebasestorage.app",
-            messagingSenderId: "520710359414",
-            appId: "1:520710359414:web:24f13d22d295deb2a0d257"
+            apiKey: "AIzaSyAnpeLs7fpfkWIxdlqttvd9N_kQM1fss0E",
+            authDomain: "cartpunch-a2267.firebaseapp.com",
+            databaseURL: "https://cartpunch-a2267-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "cartpunch-a2267",
+            storageBucket: "cartpunch-a2267.firebasestorage.app",
+            messagingSenderId: "413542821283",
+            appId: "1:413542821283:web:3bb97cdb6f8b54e774fe16"
         };
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
@@ -93,7 +134,6 @@
         const reqId = params.get('req');
         const applicantEmail = params.get('email');
         let timerInterval = null;
-        let loginRedirectTimer = null;
         let applicantUser = null;
         let authChecked = false;
         const resendButton = document.getElementById('resend-button');
@@ -141,7 +181,7 @@
                 timerInterval = null;
                 document.getElementById('pending-actions').classList.add('hidden');
                 const iconEl = document.getElementById('status-icon');
-                iconEl.className = `w-16 h-16 mx-auto ${iconClass} rounded-2xl flex items-center justify-center`;
+                iconEl.className = `w-16 h-16 shrink-0 ${iconClass} rounded-2xl flex items-center justify-center`;
                 iconEl.innerHTML = `<i data-lucide="${iconName}" class="w-8 h-8"></i>`;
                 document.getElementById('status-title').innerText = title;
                 document.getElementById('status-desc').innerText = desc;
@@ -190,19 +230,20 @@
                 }
 
                 if (data.status === 'approved') {
-                    const loginUrl = getAdminLoginUrl();
                     showTerminalState({
                         iconClass: 'bg-emerald-100 text-emerald-600',
                         iconName: 'check-circle',
-                        title: 'Request Approved!',
-                        desc: 'Your request was approved. Sign in with the email and password you created.',
+                        title: 'Successful!',
+                        desc: 'The Main Admin approved your request. Sign in with the email and password you created. On your first sign-in we will send a link to verify your email.',
                         btnText: 'Go to Admin Login',
-                        btnHref: loginUrl
+                        btnHref: getAdminLoginUrl()
                     });
-                    if (loginRedirectTimer === null) {
-                        loginRedirectTimer = window.setTimeout(() => {
-                            window.location.assign(loginUrl);
-                        }, 2200);
+                    // End the session left over from sign-up so the applicant signs in manually.
+                    // Only sign out the applicant: a Main Admin signed in on this browser stays signed in.
+                    const signedIn = auth.currentUser;
+                    if (signedIn && signedIn.email && applicantEmail &&
+                        signedIn.email.toLowerCase() === applicantEmail.toLowerCase()) {
+                        auth.signOut();
                     }
                 } else if (data.status === 'rejected') {
                     showTerminalState({
@@ -291,6 +332,7 @@
                         applicant_position: request.position,
                         applicant_department: request.department,
                         applicant_email: request.email,
+                        request_id: reqId,
                         approve_link: approveLink,
                         reject_link: rejectLink,
                         expires_in: `${remainingTime} remaining`

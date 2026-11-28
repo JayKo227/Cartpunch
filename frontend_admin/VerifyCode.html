@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Your Email - CartPunch Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 500: '#ef6c00', 600: '#e65100' },
+                        surface: '#f8fafc'
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script src="scripts/otp.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .code-box::-webkit-outer-spin-button, .code-box::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    </style>
+</head>
+
+<body class="bg-surface min-h-screen text-slate-800">
+
+    <header class="bg-white border-b border-slate-100">
+        <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 bg-brand-500 rounded-xl flex items-center justify-center text-white">
+                    <i data-lucide="scan-line" class="w-5 h-5"></i>
+                </div>
+                <span class="text-lg font-extrabold tracking-tight">CartPunch Admin</span>
+            </div>
+            <button id="switch-account" type="button" class="text-sm font-semibold text-slate-500 hover:text-brand-600">
+                Use a different account
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-6 py-12">
+        <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 overflow-hidden grid md:grid-cols-[3fr_2fr]">
+            <section class="p-10 lg:p-12 space-y-6">
+                <div class="flex items-start space-x-5">
+                    <div class="w-16 h-16 shrink-0 bg-brand-500/10 text-brand-500 rounded-2xl flex items-center justify-center">
+                        <i data-lucide="mail-check" class="w-8 h-8"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl lg:text-3xl font-extrabold text-slate-800 tracking-tight">Verify your email</h1>
+                        <p class="text-sm text-slate-500 mt-2 leading-relaxed">
+                            We sent a 6-digit code to <strong id="user-email" class="text-slate-700">your email</strong>.
+                            Enter it below to finish signing in.
+                        </p>
+                    </div>
+                </div>
+
+                <form id="code-form" class="space-y-5">
+                    <div id="code-inputs" class="flex gap-3" aria-label="6-digit verification code"></div>
+
+                    <p id="form-message" class="hidden text-sm font-semibold" role="status" aria-live="polite"></p>
+
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <button id="verify-btn" type="submit" disabled
+                            class="flex-1 py-3 px-5 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                            Verify and Continue
+                        </button>
+                        <button id="resend-btn" type="button"
+                            class="flex-1 py-3 px-5 bg-white hover:bg-slate-50 text-slate-600 font-bold rounded-lg border border-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                            Resend code
+                        </button>
+                    </div>
+                    <p class="text-xs text-slate-400">Didn't get it? Check your spam folder. You can request a new code once a minute.</p>
+                </form>
+            </section>
+
+            <aside class="bg-slate-50 border-t md:border-t-0 md:border-l border-slate-100 p-10 lg:p-12 flex flex-col justify-between gap-8">
+                <div id="timer-box" class="bg-amber-50 border border-amber-200 rounded-xl py-6 px-6 text-center">
+                    <p class="text-xs font-bold uppercase tracking-wider text-amber-700">Code expires in</p>
+                    <p id="countdown" class="text-5xl font-extrabold text-amber-800 mt-2 tabular-nums">--:--</p>
+                    <p class="text-xs text-amber-700/80 mt-2">Each code is valid for 5 minutes.</p>
+                </div>
+                <ol class="space-y-4 text-sm">
+                    <li class="flex items-start space-x-3">
+                        <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-500 shrink-0"></i>
+                        <span class="text-slate-600">Approved by the Main Admin</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                        <i data-lucide="mail" class="w-5 h-5 text-amber-500 shrink-0"></i>
+                        <span class="text-slate-600">Enter the code sent to your email</span>
+                    </li>
+                    <li class="flex items-start space-x-3">
+                        <i data-lucide="layout-dashboard" class="w-5 h-5 text-slate-400 shrink-0"></i>
+                        <span class="text-slate-600">Open the admin dashboard</span>
+                    </li>
+                </ol>
+            </aside>
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAnpeLs7fpfkWIxdlqttvd9N_kQM1fss0E",
+            authDomain: "cartpunch-a2267.firebaseapp.com",
+            databaseURL: "https://cartpunch-a2267-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "cartpunch-a2267",
+            storageBucket: "cartpunch-a2267.firebasestorage.app",
+            messagingSenderId: "413542821283",
+            appId: "1:413542821283:web:3bb97cdb6f8b54e774fe16"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        const inputsWrap = document.getElementById('code-inputs');
+        const verifyBtn = document.getElementById('verify-btn');
+        const resendBtn = document.getElementById('resend-btn');
+        const formMessage = document.getElementById('form-message');
+        let currentUser = null;
+        let countdownTimer = null;
+        let cooldownTimer = null;
+
+        // Six single-digit boxes; typing moves forward, Backspace moves back, paste fills all.
+        const boxes = Array.from({ length: 6 }, (_, i) => {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.inputMode = 'numeric';
+            input.maxLength = 1;
+            input.autocomplete = i === 0 ? 'one-time-code' : 'off';
+            input.setAttribute('aria-label', `Digit ${i + 1}`);
+            input.className = 'code-box w-14 h-16 text-center text-2xl font-extrabold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30';
+            inputsWrap.appendChild(input);
+            return input;
+        });
+
+        function codeValue() {
+            return boxes.map(b => b.value).join('');
+        }
+
+        function updateVerifyButton() {
+            verifyBtn.disabled = !/^\d{6}$/.test(codeValue());
+        }
+
+        boxes.forEach((box, i) => {
+            box.addEventListener('input', () => {
+                box.value = box.value.replace(/\D/g, '').slice(-1);
+                if (box.value && i < 5) boxes[i + 1].focus();
+                updateVerifyButton();
+            });
+            box.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !box.value && i > 0) boxes[i - 1].focus();
+            });
+            box.addEventListener('paste', (e) => {
+                const digits = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+                if (!digits) return;
+                e.preventDefault();
+                digits.split('').forEach((d, j) => { if (boxes[j]) boxes[j].value = d; });
+                boxes[Math.min(digits.length, 5)].focus();
+                updateVerifyButton();
+            });
+        });
+
+        function showMessage(text, isError) {
+            formMessage.textContent = text;
+            formMessage.className = `text-sm font-semibold ${isError ? 'text-rose-600' : 'text-emerald-700'}`;
+        }
+
+        function startCountdown(expiresAt) {
+            clearInterval(countdownTimer);
+            const el = document.getElementById('countdown');
+            const tick = () => {
+                const remaining = expiresAt - Date.now();
+                if (remaining <= 0) {
+                    el.textContent = '00:00';
+                    clearInterval(countdownTimer);
+                    showMessage('This code expired. Click "Resend code" to get a new one.', true);
+                    return;
+                }
+                const m = String(Math.floor(remaining / 60000)).padStart(2, '0');
+                const s = String(Math.floor((remaining % 60000) / 1000)).padStart(2, '0');
+                el.textContent = `${m}:${s}`;
+            };
+            tick();
+            countdownTimer = setInterval(tick, 1000);
+        }
+
+        function startResendCooldown(sentAt) {
+            clearInterval(cooldownTimer);
+            const tick = () => {
+                const wait = sentAt + OTP_RESEND_COOLDOWN_MS - Date.now();
+                if (wait <= 0) {
+                    resendBtn.disabled = false;
+                    resendBtn.textContent = 'Resend code';
+                    clearInterval(cooldownTimer);
+                } else {
+                    resendBtn.disabled = true;
+                    resendBtn.textContent = `Resend code (${Math.ceil(wait / 1000)}s)`;
+                }
+            };
+            tick();
+            cooldownTimer = setInterval(tick, 1000);
+        }
+
+        async function sendCode() {
+            resendBtn.disabled = true;
+            resendBtn.textContent = 'Sending...';
+            try {
+                const expiresAt = await sendEmailCode(db, currentUser);
+                boxes.forEach(b => { b.value = ''; });
+                boxes[0].focus();
+                updateVerifyButton();
+                startCountdown(expiresAt);
+                startResendCooldown(Date.now());
+                showMessage(`A new code was sent to ${currentUser.email}.`, false);
+            } catch (error) {
+                console.error(error);
+                resendBtn.disabled = false;
+                resendBtn.textContent = 'Resend code';
+                showMessage('Could not send the code: ' + (error.text || error.message || 'Unknown error'), true);
+            }
+        }
+
+        auth.onAuthStateChanged(async (user) => {
+            if (!user) {
+                window.location.replace('Login.html');
+                return;
+            }
+            currentUser = user;
+            document.getElementById('user-email').textContent = user.email;
+            try {
+                if (await isEmailCodeVerified(db, user)) {
+                    window.location.replace('Admin.html');
+                    return;
+                }
+                const record = (await db.ref(`admin_otp/${user.uid}`).once('value')).val();
+                if (record && record.codeHash && Date.now() < record.expiresAt) {
+                    startCountdown(record.expiresAt);
+                    startResendCooldown(record.sentAt || 0);
+                } else {
+                    await sendCode();
+                }
+                boxes[0].focus();
+            } catch (error) {
+                console.error(error);
+                showMessage('Could not load your verification status: ' + error.message, true);
+            }
+        });
+
+        document.getElementById('code-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentUser) return;
+            verifyBtn.disabled = true;
+            verifyBtn.textContent = 'Verifying...';
+            try {
+                const result = await checkEmailCode(db, currentUser, codeValue());
+                if (result.ok) {
+                    showMessage('Email verified! Opening the dashboard...', false);
+                    window.location.replace('Admin.html');
+                    return;
+                }
+                showMessage(result.message, true);
+                boxes.forEach(b => { b.value = ''; });
+                boxes[0].focus();
+            } catch (error) {
+                console.error(error);
+                showMessage('Could not verify the code: ' + error.message, true);
+            }
+            verifyBtn.textContent = 'Verify and Continue';
+            updateVerifyButton();
+        });
+
+        resendBtn.addEventListener('click', sendCode);
+        document.getElementById('switch-account').addEventListener('click', async () => {
+            await auth.signOut();
+            window.location.replace('Login.html');
+        });
+    </script>
+</body>
+
+</html>

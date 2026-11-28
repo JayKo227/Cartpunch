@@ -47,6 +47,19 @@
                 <h1 class="text-2xl font-bold tracking-tight">CartPunch</h1>
             </div>
 
+            <!-- Signed-in user -->
+            <div class="mx-3 mb-6 px-3 py-3 rounded-lg bg-white/10 flex items-center space-x-3" title="Currently signed in">
+                <div id="current-user-initials"
+                    class="w-10 h-10 shrink-0 rounded-full bg-white text-brand-600 font-extrabold flex items-center justify-center text-sm">
+                    ··
+                </div>
+                <div class="min-w-0">
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-white/70">Signed in as</p>
+                    <p id="current-user-name" class="text-sm font-bold truncate">Loading...</p>
+                    <p id="current-user-role" class="text-xs text-white/80 truncate"></p>
+                </div>
+            </div>
+
             <nav class="space-y-1 px-3">
                 <button id="nav-dashboard" onclick="switchTab('dashboard')" class="w-full flex items-center space-x-3 px-4 py-3 rounded-md font-medium text-sm transition-all bg-white text-brand-500">
                     <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
@@ -68,7 +81,7 @@
         </div>
 
         <div class="p-6">
-            <button onclick="firebase.auth().signOut()" class="flex items-center space-x-2 text-white/90 hover:text-white transition-colors focus:outline-none">
+            <button onclick="logoutAdmin()" class="flex items-center space-x-2 text-white/90 hover:text-white transition-colors focus:outline-none">
                 <i data-lucide="log-out" class="w-5 h-5"></i>
                 <span class="font-medium text-sm">Logout</span>
             </button>
@@ -493,7 +506,7 @@
                 <div class="flex flex-wrap justify-between items-start gap-4">
                     <div>
                         <h2 class="text-3xl font-bold text-slate-800">Monitoring</h2>
-                        <p class="text-sm text-slate-500 mt-2">Live admin sign-ins and product management activity.</p>
+                        <p class="text-sm text-slate-500 mt-2">Live admin sign-ins, sign-outs and product management activity.</p>
                     </div>
                     <div id="monitoring-connection" class="flex items-center space-x-2 bg-emerald-50 text-emerald-700 px-4 py-2 rounded-full text-sm font-semibold border border-emerald-100">
                         <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
@@ -517,15 +530,39 @@
                 </div>
 
                 <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div class="p-5 border-b border-slate-100 flex flex-wrap justify-between items-center gap-2">
+                    <div class="p-5 border-b border-slate-100 flex flex-wrap justify-between items-center gap-3">
                         <div>
                             <h3 class="font-bold text-slate-800">Activity Log</h3>
-                            <p class="text-xs text-slate-500 mt-1">Latest 100 events. Expand a card to view user and event details.</p>
+                            <p class="text-xs text-slate-500 mt-1">All admin logins, logouts and product changes, newest first. One record per line.</p>
                         </div>
-                        <span class="text-xs text-slate-400 font-semibold">Live from Firebase</span>
+                        <div class="flex items-center gap-2">
+                            <select id="monitoring-filter" onchange="renderMonitoringList()"
+                                class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:border-brand-500">
+                                <option value="all">All activity</option>
+                                <option value="login">Logins</option>
+                                <option value="logout">Logouts</option>
+                                <option value="product_created">Added</option>
+                                <option value="product_updated">Edited</option>
+                                <option value="product_deleted">Removed</option>
+                            </select>
+                            <input id="monitoring-search" type="search" oninput="renderMonitoringList()" placeholder="Search admin or product..."
+                                class="w-56 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500">
+                        </div>
                     </div>
-                    <div id="monitoring-list" class="max-h-[calc(100vh-340px)] min-h-48 overflow-y-auto p-4 space-y-3">
-                        <p class="text-sm text-slate-400 text-center py-8">Loading monitoring events...</p>
+                    <div class="max-h-[calc(100vh-340px)] min-h-48 overflow-auto">
+                        <table class="w-full text-sm">
+                            <thead class="sticky top-0 bg-slate-50 text-left text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                                <tr>
+                                    <th class="px-5 py-3 whitespace-nowrap">Date &amp; Time</th>
+                                    <th class="px-5 py-3">Action</th>
+                                    <th class="px-5 py-3">Admin</th>
+                                    <th class="px-5 py-3">Details</th>
+                                </tr>
+                            </thead>
+                            <tbody id="monitoring-list" class="divide-y divide-slate-100">
+                                <tr><td colspan="4" class="text-sm text-slate-400 text-center py-8">Loading monitoring events...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </section>
             </div>
@@ -592,13 +629,13 @@
     <script>
         // Firebase Setup
         const firebaseConfig = {
-            apiKey: "AIzaSyDnOqNF8U-uNKDQEZiR0AyMd6JAbFNEIFE",
-            authDomain: "cartpunch-5b2d8.firebaseapp.com",
-            databaseURL: "https://cartpunch-5b2d8-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "cartpunch-5b2d8",
-            storageBucket: "cartpunch-5b2d8.firebasestorage.app",
-            messagingSenderId: "520710359414",
-            appId: "1:520710359414:web:24f13d22d295deb2a0d257"
+            apiKey: "AIzaSyAnpeLs7fpfkWIxdlqttvd9N_kQM1fss0E",
+            authDomain: "cartpunch-a2267.firebaseapp.com",
+            databaseURL: "https://cartpunch-a2267-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "cartpunch-a2267",
+            storageBucket: "cartpunch-a2267.firebasestorage.app",
+            messagingSenderId: "413542821283",
+            appId: "1:413542821283:web:3bb97cdb6f8b54e774fe16"
         };
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
@@ -607,6 +644,49 @@
         const MAIN_ADMIN_EMAIL = 'cartpunch.security@gmail.com';
         let currentAdminProfile = {};
         let monitoringListenerAttached = false;
+        let monitoringEvents = [];
+        let loggingOut = false;
+
+        function currentDisplayName(user) {
+            return currentAdminProfile.name || user.displayName || user.email || 'Unknown admin';
+        }
+
+        function showCurrentUser(user) {
+            const name = currentDisplayName(user);
+            const role = [currentAdminProfile.position, currentAdminProfile.department].filter(Boolean).join(' · ') ||
+                (user.email === MAIN_ADMIN_EMAIL ? 'Main Admin' : user.email || '');
+            const initials = name.split(/[\s@._-]+/).filter(Boolean).slice(0, 2).map(part => part[0].toUpperCase()).join('') || '?';
+            document.getElementById('current-user-name').textContent = name;
+            document.getElementById('current-user-role').textContent = role;
+            document.getElementById('current-user-initials').textContent = initials;
+        }
+
+        // Record one "login" event per real sign-in. Firebase updates lastSignInTime on every
+        // sign-in, so reopening the dashboard or opening a new tab does not create duplicates,
+        // and a session that was already signed in before this page existed still gets recorded.
+        async function recordSessionLogin(user) {
+            const signInTime = (user.metadata && user.metadata.lastSignInTime) || 'unknown';
+            const storageKey = `cartpunch_login_logged_${user.uid}`;
+            if (localStorage.getItem(storageKey) === signInTime) return;
+            const event = createMonitoringEvent('login', `Signed in (session started ${new Date(signInTime).toLocaleString()}).`);
+            const result = await writeMonitoringEvent(event);
+            if (result.ok) {
+                localStorage.setItem(storageKey, signInTime);
+            } else {
+                showToast(`Could not record your login in Monitoring: ${result.error.message}`, true);
+            }
+        }
+
+        async function logoutAdmin() {
+            if (loggingOut) return;
+            loggingOut = true;
+            const user = auth.currentUser;
+            if (user) {
+                const result = await writeMonitoringEvent(createMonitoringEvent('logout', 'Signed out.'));
+                if (!result.ok) console.error('Could not record logout:', result.error);
+            }
+            await auth.signOut();
+        }
 
         // Enforce authentication and an approved admin profile.
         auth.onAuthStateChanged(async user => {
@@ -621,9 +701,10 @@
                     const profileSnapshot = await db.ref(`admins/${user.uid}`).once('value');
                     profile = profileSnapshot.val() || {};
                 } else {
-                    if (!user.emailVerified) {
-                        await auth.signOut();
-                        window.location.replace('Login.html');
+                    const codeVerified = user.emailVerified ||
+                        Number.isFinite((await db.ref(`admin_otp/${user.uid}/verifiedAt`).once('value')).val());
+                    if (!codeVerified) {
+                        window.location.replace('VerifyCode.html');
                         return;
                     }
                     const profileSnapshot = await db.ref(`admins/${user.uid}`).once('value');
@@ -635,7 +716,9 @@
                     }
                 }
                 currentAdminProfile = profile;
+                showCurrentUser(user);
                 subscribeToMonitoring();
+                recordSessionLogin(user);
             } catch (error) {
                 console.error('Could not verify admin access:', error);
                 await auth.signOut();
@@ -777,7 +860,7 @@
         function subscribeToMonitoring() {
             if (monitoringListenerAttached) return;
             monitoringListenerAttached = true;
-            db.ref('monitoring').orderByChild('timestamp').limitToLast(100).on(
+            db.ref('monitoring').orderByChild('timestamp').on(
                 'value',
                 renderMonitoringEvents,
                 error => {
@@ -786,7 +869,7 @@
                     connection.className = 'flex items-center space-x-2 bg-rose-50 text-rose-700 px-4 py-2 rounded-full text-sm font-semibold border border-rose-100';
                     connection.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-500"></span><span>Monitoring unavailable</span>';
                     document.getElementById('monitoring-list').innerHTML =
-                        '<p class="text-sm text-rose-600 text-center py-8">Could not load monitoring events. Check your connection and admin access.</p>';
+                        '<tr><td colspan="4" class="text-sm text-rose-600 text-center py-8">Could not load monitoring events. Check your connection and admin access.</td></tr>';
                 }
             );
         }
@@ -804,20 +887,35 @@
             document.getElementById('monitoring-login-count').innerText = loginCount.toLocaleString();
             document.getElementById('monitoring-product-count').innerText = productCount.toLocaleString();
 
+            monitoringEvents = events;
+            renderMonitoringList();
+        }
+
+        function renderMonitoringList() {
             const list = document.getElementById('monitoring-list');
+            const filter = document.getElementById('monitoring-filter').value;
+            const query = document.getElementById('monitoring-search').value.trim().toLowerCase();
+            const events = monitoringEvents.filter(event => {
+                if (filter !== 'all' && event.type !== filter) return false;
+                if (!query) return true;
+                return [event.displayName, event.email, event.details, event.productName, event.productBarcode]
+                    .some(value => typeof value === 'string' && value.toLowerCase().includes(query));
+            });
             if (events.length === 0) {
-                list.innerHTML = '<p class="text-sm text-slate-400 text-center py-8">No monitoring events recorded yet.</p>';
+                list.innerHTML = `<tr><td colspan="4" class="text-sm text-slate-400 text-center py-8">${monitoringEvents.length ? 'No records match this filter.' : 'No monitoring events recorded yet.'}</td></tr>`;
                 return;
             }
 
             const labels = {
-                login: 'Admin login',
-                product_created: 'Product created',
-                product_updated: 'Product updated',
-                product_deleted: 'Product deleted'
+                login: 'Login',
+                logout: 'Logout',
+                product_created: 'Added',
+                product_updated: 'Edited',
+                product_deleted: 'Removed'
             };
             const colors = {
                 login: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+                logout: 'bg-slate-100 text-slate-600 border-slate-200',
                 product_created: 'bg-blue-50 text-blue-700 border-blue-100',
                 product_updated: 'bg-amber-50 text-amber-700 border-amber-100',
                 product_deleted: 'bg-rose-50 text-rose-700 border-rose-100'
@@ -831,37 +929,18 @@
                 const label = labels[event.type] || 'Activity';
                 const color = colors[event.type] || 'bg-slate-50 text-slate-700 border-slate-100';
                 const displayName = event.displayName || event.email || 'Unknown admin';
-                const userDetails = [
-                    event.position,
-                    event.department
-                ].filter(Boolean).map(escapeHtml).join(' · ');
+                const userDetails = [event.position, event.department].filter(Boolean).join(' · ');
+                const adminTitle = [displayName, event.email, userDetails].filter(Boolean).join('\n');
 
                 return `
-                    <details class="group rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-colors">
-                        <summary class="list-none cursor-pointer p-4 flex flex-wrap items-center justify-between gap-3">
-                            <div class="flex items-center gap-3 min-w-0">
-                                <span class="px-2.5 py-1 rounded-full border text-xs font-bold ${color}">${escapeHtml(label)}</span>
-                                <div class="min-w-0">
-                                    <span class="font-semibold text-sm text-slate-800 truncate">${escapeHtml(displayName)}</span>
-                                    <span class="block text-xs text-slate-500 truncate">${escapeHtml(event.email || 'Email unavailable')}</span>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-3 text-xs text-slate-500">
-                                <time>${escapeHtml(time)}</time>
-                                <i data-lucide="chevron-down" class="w-4 h-4 transition-transform group-open:rotate-180"></i>
-                            </div>
-                        </summary>
-                        <div class="border-t border-slate-100 px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                            <p><span class="font-semibold text-slate-500">User:</span> <span class="text-slate-800">${escapeHtml(displayName)}</span></p>
-                            <p><span class="font-semibold text-slate-500">Email:</span> <span class="text-slate-800">${escapeHtml(event.email || 'Not provided')}</span></p>
-                            <p><span class="font-semibold text-slate-500">Position / department:</span> <span class="text-slate-800">${userDetails || 'Not provided'}</span></p>
-                            <p><span class="font-semibold text-slate-500">Time:</span> <span class="text-slate-800">${escapeHtml(time)}</span></p>
-                            <p class="sm:col-span-2"><span class="font-semibold text-slate-500">Details:</span> <span class="text-slate-800">${escapeHtml(event.details || 'No additional details')}</span></p>
-                        </div>
-                    </details>
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-5 py-2.5 whitespace-nowrap text-slate-600 tabular-nums"><time>${escapeHtml(time)}</time></td>
+                        <td class="px-5 py-2.5 whitespace-nowrap"><span class="px-2.5 py-0.5 rounded-full border text-xs font-bold ${color}">${escapeHtml(label)}</span></td>
+                        <td class="px-5 py-2.5 whitespace-nowrap font-semibold text-slate-800" title="${escapeHtml(adminTitle)}">${escapeHtml(displayName)}</td>
+                        <td class="px-5 py-2.5 text-slate-600">${escapeHtml(event.details || '')}</td>
+                    </tr>
                 `;
             }).join('');
-            lucide.createIcons();
         }
 
         function createMonitoringEvent(type, details, product = {}) {
@@ -875,11 +954,13 @@
                 uid: user.uid,
                 email: user.email || currentAdminProfile.email || '',
                 displayName: currentAdminProfile.name || user.displayName || user.email || 'Unknown admin',
-                position: currentAdminProfile.position || '',
-                department: currentAdminProfile.department || '',
                 timestamp: Date.now(),
                 details
             };
+            // Blank fields are left out: the database does not store empty values.
+            const position = currentAdminProfile.position || (user.email === MAIN_ADMIN_EMAIL ? 'Main Admin' : '');
+            if (position) event.position = position;
+            if (currentAdminProfile.department) event.department = currentAdminProfile.department;
             if (product.name) event.productName = product.name;
             if (product.barcode) event.productBarcode = product.barcode;
 

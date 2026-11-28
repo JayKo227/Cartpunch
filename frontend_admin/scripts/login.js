@@ -1,13 +1,13 @@
 lucide.createIcons();
 
 const firebaseConfig = {
-    apiKey: "AIzaSyDnOqNF8U-uNKDQEZiR0AyMd6JAbFNEIFE",
-    authDomain: "cartpunch-5b2d8.firebaseapp.com",
-    databaseURL: "https://cartpunch-5b2d8-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "cartpunch-5b2d8",
-    storageBucket: "cartpunch-5b2d8.firebasestorage.app",
-    messagingSenderId: "520710359414",
-    appId: "1:520710359414:web:24f13d22d295deb2a0d257"
+    apiKey: "AIzaSyAnpeLs7fpfkWIxdlqttvd9N_kQM1fss0E",
+    authDomain: "cartpunch-a2267.firebaseapp.com",
+    databaseURL: "https://cartpunch-a2267-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "cartpunch-a2267",
+    storageBucket: "cartpunch-a2267.firebasestorage.app",
+    messagingSenderId: "413542821283",
+    appId: "1:413542821283:web:3bb97cdb6f8b54e774fe16"
 };
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
@@ -20,7 +20,7 @@ const errorText = document.getElementById('error-text');
 const approvalNotice = document.getElementById('approval-notice');
 const loginParams = new URLSearchParams(window.location.search);
 const approvedEmail = loginParams.get('email');
-const approvedRequestId = loginParams.get('req');
+const requestIdFromLink = loginParams.get('req');
 let signInRequested = false;
 
 if (approvedEmail && approvedEmail.includes('@')) {
@@ -35,19 +35,48 @@ function showLoginError(message) {
     errorDiv.classList.remove('hidden');
 }
 
+function resetLoginButton() {
+    const btn = document.getElementById('login-btn');
+    btn.innerHTML = '<span>Sign In</span><i data-lucide="arrow-right" class="w-4 h-4"></i>';
+    lucide.createIcons();
+}
+
+// Approved admins verify their own email with a 6-digit code the first time they
+// sign in (VerifyCode.html sends it). Older admins verified by Firebase skip this.
+async function requireVerifiedEmail(user) {
+    if (await isEmailCodeVerified(db, user)) return true;
+    if (signInRequested) {
+        window.location.href = 'VerifyCode.html';
+        return false;
+    }
+    await auth.signOut();
+    resetLoginButton();
+    showLoginError('Your admin request is approved. Enter your email and password to sign in and verify your email.');
+    return false;
+}
+
+async function findRequestId(user) {
+    const candidates = [requestIdFromLink, localStorage.getItem(`cartpunch_admin_request_${user.uid}`)];
+    try {
+        candidates.push((await db.ref(`admin_request_by_uid/${user.uid}`).once('value')).val());
+    } catch (error) {
+        console.error('Could not look up the sign-up request:', error);
+    }
+    return candidates.find(id => typeof id === 'string' && /^[A-Za-z0-9_-]+$/.test(id)) || null;
+}
+
 auth.onAuthStateChanged(async user => {
     if (!user) return;
 
     try {
         let adminProfile = {};
         if (user.email !== MAIN_ADMIN_EMAIL) {
-            if (!user.emailVerified) {
-                await auth.signOut();
-                return showLoginError('Verify your email address before signing in.');
-            }
             let profile = (await db.ref(`admins/${user.uid}`).once('value')).val();
             if (!profile) {
-                if (!approvedRequestId || !/^[A-Za-z0-9_-]+$/.test(approvedRequestId)) {
+                // The request id comes from the approval redirect link, or from this browser if the
+                // applicant signed up here and later opened the Login page directly.
+                const approvedRequestId = await findRequestId(user);
+                if (!approvedRequestId) {
                     await auth.signOut();
                     return showLoginError('This account has not been approved as an admin.');
                 }
@@ -77,29 +106,14 @@ auth.onAuthStateChanged(async user => {
                 await auth.signOut();
                 return showLoginError('This account has not been approved as an admin.');
             }
+            if (!(await requireVerifiedEmail(user))) return;
             adminProfile = profile;
         } else {
             const profileSnapshot = await db.ref(`admins/${user.uid}`).once('value');
             adminProfile = profileSnapshot.val() || {};
         }
-        if (signInRequested) {
-            try {
-                await db.ref('monitoring').push().set({
-                    type: 'login',
-                    uid: user.uid,
-                    email: user.email || '',
-                    displayName: adminProfile.name || user.displayName || user.email || 'Unknown admin',
-                    position: adminProfile.position || '',
-                    department: adminProfile.department || '',
-                    timestamp: Date.now(),
-                    details: 'Admin signed in.'
-                });
-            } catch (error) {
-                console.error('Could not record admin login:', error);
-                showLoginError('Signed in, but login activity could not be recorded: ' + error.message);
-            }
-            signInRequested = false;
-        }
+        // The dashboard records the login event in Monitoring (once per sign-in).
+        signInRequested = false;
         window.location.href = 'Admin.html';
     } catch (error) {
         console.error(error);

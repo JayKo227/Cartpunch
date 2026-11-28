@@ -39,99 +39,177 @@
     </style>
 </head>
 
-<body class="bg-surface min-h-screen flex items-center justify-center py-8 px-4 text-slate-800">
+<body class="bg-surface min-h-screen text-slate-800">
 
-    <div class="w-full max-w-lg p-8 bg-white rounded-2xl shadow-xl border border-slate-100">
-        <div class="flex flex-col items-center mb-6">
-            <div
-                class="w-14 h-14 bg-brand-500 rounded-2xl flex items-center justify-center text-white mb-3 shadow-lg shadow-brand-500/30">
-                <i data-lucide="user-plus" class="w-7 h-7"></i>
-            </div>
-            <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Admin Sign Up</h1>
-            <p class="text-sm text-slate-500 mt-1 text-center">Create your account and submit your details for Main Admin approval. Admin access starts after approval.</p>
-        </div>
+    <div class="min-h-screen grid lg:grid-cols-[minmax(380px,5fr)_7fr]">
+        <!-- Brand / process panel -->
+        <aside class="relative hidden lg:flex flex-col justify-between overflow-hidden bg-gradient-to-br from-brand-500 to-brand-600 text-white p-12 xl:p-16">
+            <div class="absolute -right-24 -top-24 w-80 h-80 rounded-full bg-white/10"></div>
+            <div class="absolute -left-20 -bottom-28 w-96 h-96 rounded-full bg-white/5"></div>
 
-        <div id="error-box"
-            class="hidden mb-4 bg-rose-50 text-rose-600 text-xs font-semibold p-3.5 rounded-lg border border-rose-100 flex items-center space-x-2">
-            <i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
-            <span id="error-text">Please check your inputs.</span>
-            <a id="request-status-link" class="hidden underline" href="#">Open request status</a>
-        </div>
-
-        <form id="signup-form" class="space-y-4">
-            <!-- Full Name -->
-            <div>
-                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Full Name</label>
-                <input type="text" id="full-name" required placeholder="e.g. Juan Dela Cruz"
-                    class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
-            </div>
-
-            <!-- Position & Department -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                    <label
-                        class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Position</label>
-                    <input type="text" id="position" required placeholder="e.g. Store Supervisor"
-                        class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+            <div class="relative flex items-center space-x-3">
+                <div class="w-11 h-11 bg-white/15 rounded-xl flex items-center justify-center">
+                    <i data-lucide="scan-line" class="w-6 h-6"></i>
                 </div>
-                <div>
-                    <label
-                        class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Department</label>
-                    <input type="text" id="department" required placeholder="e.g. Operations"
-                        class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
-                </div>
+                <span class="text-xl font-extrabold tracking-tight">CartPunch Admin</span>
             </div>
 
-            <div>
-                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Email
-                    Address</label>
-                <div class="relative">
-                    <i data-lucide="mail" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input type="email" id="email" required placeholder="name@example.com"
-                        class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
-                </div>
+            <div class="relative max-w-md">
+                <h2 class="text-4xl font-extrabold leading-tight tracking-tight">Request admin access</h2>
+                <p class="mt-4 text-white/80 text-base leading-relaxed">
+                    Every new admin account needs a one-time approval from the Main Admin before it can sign in.
+                </p>
+
+                <ol class="mt-10 space-y-6">
+                    <li class="flex items-start space-x-4">
+                        <span class="w-9 h-9 shrink-0 rounded-full bg-white text-brand-600 font-extrabold flex items-center justify-center">1</span>
+                        <div>
+                            <p class="font-bold">Submit your details</p>
+                            <p class="text-sm text-white/75">Name, position, department, email and password.</p>
+                        </div>
+                    </li>
+                    <li class="flex items-start space-x-4">
+                        <span class="w-9 h-9 shrink-0 rounded-full bg-white/20 font-extrabold flex items-center justify-center">2</span>
+                        <div>
+                            <p class="font-bold">Wait for approval (5 minutes)</p>
+                            <p class="text-sm text-white/75">The Main Admin gets an email to approve or reject. You can resend it or cancel.</p>
+                        </div>
+                    </li>
+                    <li class="flex items-start space-x-4">
+                        <span class="w-9 h-9 shrink-0 rounded-full bg-white/20 font-extrabold flex items-center justify-center">3</span>
+                        <div>
+                            <p class="font-bold">Sign in</p>
+                            <p class="text-sm text-white/75">Once the Main Admin approves, sign in from the Admin Login page.</p>
+                        </div>
+                    </li>
+                </ol>
             </div>
 
-            <div>
-                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Password</label>
-                <div class="relative">
-                    <input type="password" id="password" required minlength="8" autocomplete="new-password"
-                        placeholder="At least 8 characters"
-                        class="w-full px-4 pr-12 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
-                    <button type="button" id="toggle-password" aria-label="Show password" aria-controls="password"
-                        class="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500 rounded">
-                        <i data-lucide="eye" aria-hidden="true" class="w-4 h-4"></i>
-                    </button>
+            <p class="relative text-xs text-white/60">&copy; CartPunch &middot; Admin Portal</p>
+        </aside>
+
+        <!-- Form panel -->
+        <main class="flex items-center justify-center px-6 py-10 sm:px-10 lg:px-16">
+            <div class="w-full max-w-2xl">
+                <div class="flex items-center justify-between mb-8">
+                    <div>
+                        <div class="flex items-center space-x-3 lg:hidden mb-4">
+                            <div class="w-10 h-10 bg-brand-500 rounded-xl flex items-center justify-center text-white">
+                                <i data-lucide="scan-line" class="w-5 h-5"></i>
+                            </div>
+                            <span class="text-lg font-extrabold tracking-tight">CartPunch Admin</span>
+                        </div>
+                        <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">Admin Sign Up</h1>
+                        <p class="text-sm text-slate-500 mt-1.5">Create your account and submit it for Main Admin approval.</p>
+                    </div>
+                    <a href="Login.html"
+                        class="hidden sm:inline-flex items-center space-x-2 text-sm font-semibold text-slate-600 hover:text-brand-600 border border-slate-200 bg-white rounded-lg px-4 py-2 transition-colors">
+                        <i data-lucide="log-in" class="w-4 h-4"></i>
+                        <span>Back to Login</span>
+                    </a>
                 </div>
-                <p class="text-xs text-slate-500 mt-1">Include a letter, number, and symbol.</p>
-            </div>
 
-            <div>
-                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Confirm Password</label>
-                <div class="relative">
-                    <input type="password" id="confirm-password" required minlength="8" autocomplete="new-password"
-                        placeholder="Enter your password again"
-                        class="w-full px-4 pr-12 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
-                    <button type="button" id="toggle-confirm-password" aria-label="Show confirm password" aria-controls="confirm-password"
-                        class="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500 rounded">
-                        <i data-lucide="eye" aria-hidden="true" class="w-4 h-4"></i>
-                    </button>
+                <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 p-8 sm:p-10">
+                    <div id="error-box"
+                        class="hidden mb-6 bg-rose-50 text-rose-600 text-sm font-semibold p-3.5 rounded-lg border border-rose-100 flex items-center space-x-2">
+                        <i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
+                        <span id="error-text">Please check your inputs.</span>
+                        <a id="request-status-link" class="hidden underline" href="#">Open request status</a>
+                    </div>
+
+                    <form id="signup-form" class="space-y-8">
+                        <section>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Personal &amp; work details</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div>
+                                    <label for="full-name" class="block text-sm font-semibold text-slate-700 mb-1.5">Full Name</label>
+                                    <input type="text" id="full-name" required maxlength="100" placeholder="e.g. Juan Dela Cruz"
+                                        class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+                                </div>
+                                <div>
+                                    <label for="email" class="block text-sm font-semibold text-slate-700 mb-1.5">Email Address</label>
+                                    <div class="relative">
+                                        <i data-lucide="mail" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                        <input type="email" id="email" required autocomplete="email" placeholder="name@example.com"
+                                            class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="position" class="block text-sm font-semibold text-slate-700 mb-1.5">Position</label>
+                                    <div class="relative">
+                                        <i data-lucide="briefcase" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                        <input type="text" id="position" required maxlength="100" placeholder="e.g. Store Supervisor"
+                                            class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="department" class="block text-sm font-semibold text-slate-700 mb-1.5">Department</label>
+                                    <div class="relative">
+                                        <i data-lucide="building-2" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                        <input type="text" id="department" required maxlength="100" list="department-options"
+                                            placeholder="e.g. Operations"
+                                            class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+                                        <datalist id="department-options">
+                                            <option value="Operations"></option>
+                                            <option value="Inventory"></option>
+                                            <option value="Sales"></option>
+                                            <option value="Finance"></option>
+                                            <option value="IT"></option>
+                                            <option value="Security"></option>
+                                            <option value="Customer Service"></option>
+                                        </datalist>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Account security</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div>
+                                    <label for="password" class="block text-sm font-semibold text-slate-700 mb-1.5">Password</label>
+                                    <div class="relative">
+                                        <input type="password" id="password" required minlength="8" autocomplete="new-password"
+                                            placeholder="At least 8 characters"
+                                            class="w-full px-4 pr-12 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+                                        <button type="button" id="toggle-password" aria-label="Show password" aria-controls="password"
+                                            class="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500 rounded">
+                                            <i data-lucide="eye" aria-hidden="true" class="w-4 h-4"></i>
+                                        </button>
+                                    </div>
+                                    <p class="text-xs text-slate-500 mt-1.5">Include a letter, number, and symbol.</p>
+                                </div>
+                                <div>
+                                    <label for="confirm-password" class="block text-sm font-semibold text-slate-700 mb-1.5">Confirm Password</label>
+                                    <div class="relative">
+                                        <input type="password" id="confirm-password" required minlength="8" autocomplete="new-password"
+                                            placeholder="Enter your password again"
+                                            class="w-full px-4 pr-12 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+                                        <button type="button" id="toggle-confirm-password" aria-label="Show confirm password" aria-controls="confirm-password"
+                                            class="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500 rounded">
+                                            <i data-lucide="eye" aria-hidden="true" class="w-4 h-4"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-4 pt-2 border-t border-slate-100">
+                            <p class="text-sm text-slate-500 pt-4 sm:pt-6">
+                                Already approved?
+                                <a href="Login.html" class="text-brand-500 hover:text-brand-600 font-bold underline">Back to Login</a>
+                            </p>
+                            <button type="submit" id="signup-btn"
+                                class="sm:mt-6 mt-4 px-8 py-3 bg-brand-500 hover:bg-brand-600 disabled:opacity-60 text-white font-bold rounded-lg shadow-md shadow-brand-500/20 transition-all flex justify-center items-center space-x-2">
+                                <span id="signup-btn-text">Submit for Approval</span>
+                                <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
-
-            <button type="submit" id="signup-btn"
-                class="w-full py-3.5 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow-md shadow-brand-500/20 transition-all mt-2 flex justify-center items-center space-x-2">
-                <span id="signup-btn-text">Sign Up</span>
-                <i data-lucide="arrow-right" class="w-4 h-4"></i>
-            </button>
-
-            <p class="text-center text-xs text-slate-500 pt-1">
-                Already approved?
-                <a href="Login.html" class="text-brand-500 hover:text-brand-600 font-bold underline">Back to Login</a>
-            </p>
-        </form>
+        </main>
     </div>
-
     <script>
         lucide.createIcons();
 
@@ -166,13 +244,13 @@
         });
 
         const firebaseConfig = {
-            apiKey: "AIzaSyDnOqNF8U-uNKDQEZiR0AyMd6JAbFNEIFE",
-            authDomain: "cartpunch-5b2d8.firebaseapp.com",
-            databaseURL: "https://cartpunch-5b2d8-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "cartpunch-5b2d8",
-            storageBucket: "cartpunch-5b2d8.firebasestorage.app",
-            messagingSenderId: "520710359414",
-            appId: "1:520710359414:web:24f13d22d295deb2a0d257"
+            apiKey: "AIzaSyAnpeLs7fpfkWIxdlqttvd9N_kQM1fss0E",
+            authDomain: "cartpunch-a2267.firebaseapp.com",
+            databaseURL: "https://cartpunch-a2267-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "cartpunch-a2267",
+            storageBucket: "cartpunch-a2267.firebasestorage.app",
+            messagingSenderId: "413542821283",
+            appId: "1:413542821283:web:3bb97cdb6f8b54e774fe16"
         };
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
@@ -235,6 +313,7 @@
 
             let requestSaved = false;
             let requestId = null;
+            let step = 'creating your account';
             try {
                 let credential;
                 try {
@@ -245,6 +324,7 @@
                 }
 
                 const user = credential.user;
+                step = 'checking existing admin access';
                 const existingAdmin = await db.ref(`admins/${user.uid}`).once('value');
                 if (existingAdmin.exists()) {
                     await auth.signOut();
@@ -252,6 +332,7 @@
                     return;
                 }
 
+                step = 'saving your approval request';
                 const requestRef = db.ref('pending_admin_requests').push();
                 requestId = requestRef.key;
                 const now = Date.now();
@@ -268,7 +349,10 @@
                     expiresAt
                 });
                 requestSaved = true;
+                localStorage.setItem(`cartpunch_admin_request_${user.uid}`, requestId);
+                await db.ref(`admin_request_by_uid/${user.uid}`).set(requestId);
 
+                step = 'saving the request status';
                 await db.ref(`pending_admin_status/${requestId}`).set({
                     status: 'pending',
                     expiresAt
@@ -278,39 +362,23 @@
                 const approveLink = `${approveBaseUrl}?req=${requestId}&action=approve`;
                 const rejectLink = `${approveBaseUrl}?req=${requestId}&action=reject`;
 
-                let verificationError = null;
-                const continueUrl = new URL(`CreateAccount.html?req=${encodeURIComponent(requestId)}`, window.location.href).href;
-                try {
-                    await user.sendEmailVerification({ url: continueUrl });
-                } catch (error) {
-                    console.error(error);
-                    verificationError = error;
-                }
-
+                step = 'sending the approval email';
                 await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_APPROVAL_TEMPLATE_ID, {
                     to_email: MAIN_ADMIN_EMAIL,
                     applicant_name: name,
                     applicant_position: position,
                     applicant_department: department,
                     applicant_email: email,
+                    request_id: requestId,
                     approve_link: approveLink,
                     reject_link: rejectLink,
                     expires_in: '5 minutes'
                 });
 
-                if (verificationError) {
-                    showError('Your approval request was sent, but the verification email could not be sent: ' +
-                        (verificationError.message || 'Unknown error'));
-                    showRequestStatusLink(requestId, email);
-                    btn.disabled = false;
-                    btnText.innerText = 'Sign Up';
-                    return;
-                }
-
                 window.location.href = `PendingApproval.html?req=${encodeURIComponent(requestId)}&email=${encodeURIComponent(email)}`;
             } catch (err) {
                 console.error(err);
-                const details = err.text || err.message || 'Unknown error';
+                const details = `while ${step}: ${err.text || err.message || 'Unknown error'}`;
                 if (requestSaved) {
                     showError('Your request was saved, but setup could not finish: ' + details);
                     showRequestStatusLink(requestId, email);
@@ -318,7 +386,7 @@
                     showError('Failed to save your approval request: ' + details);
                 }
                 btn.disabled = false;
-                btnText.innerText = 'Sign Up';
+                btnText.innerText = 'Submit for Approval';
             }
         });
     </script>

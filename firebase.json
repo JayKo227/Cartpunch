@@ -4,7 +4,7 @@
   },
   "hosting": [
     {
-      "site": "cartpunch-5b2d8",
+      "site": "cartpunch-a2267",
       "public": "frontend_admin",
       "ignore": [
         "firebase.json",
@@ -39,7 +39,7 @@
       ]
     },
     {
-      "site": "cartpunch-monitor-5b2d8",
+      "site": "cartpunch-monitor",
       "public": "frontend_monitor",
       "ignore": [
         "firebase.json",

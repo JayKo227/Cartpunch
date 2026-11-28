@@ -45,27 +45,39 @@
             <p><strong>Position:</strong> <span id="request-position"></span></p>
             <p><strong>Department:</strong> <span id="request-department"></span></p>
         </div>
+        <form id="login-link" class="hidden space-y-3 text-left">
+            <div>
+                <label for="main-admin-email" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Main Admin Email</label>
+                <input id="main-admin-email" type="email" readonly
+                    class="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-600">
+            </div>
+            <div>
+                <label for="main-admin-password" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Password</label>
+                <input id="main-admin-password" type="password" required autocomplete="current-password"
+                    class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+            </div>
+            <button id="password-signin" type="submit"
+                class="w-full py-3 bg-brand-500 hover:bg-brand-600 disabled:opacity-60 text-white font-bold rounded-lg shadow-md transition-all">
+                Sign in and Continue
+            </button>
+        </form>
         <button id="google-signin" type="button"
-            class="hidden w-full py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow-md transition-all">
-            Sign in with Google as Main Admin
+            class="hidden w-full py-3 bg-white hover:bg-slate-50 text-slate-600 font-bold rounded-lg border border-slate-200 transition-all">
+            Sign in with Google instead
         </button>
-        <a id="login-link" href="Login.html"
-            class="hidden w-full py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow-md transition-all inline-block">
-            Use email and password instead
-        </a>
     </div>
 
     <script>
         lucide.createIcons();
 
         const firebaseConfig = {
-            apiKey: "AIzaSyDnOqNF8U-uNKDQEZiR0AyMd6JAbFNEIFE",
-            authDomain: "cartpunch-5b2d8.firebaseapp.com",
-            databaseURL: "https://cartpunch-5b2d8-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "cartpunch-5b2d8",
-            storageBucket: "cartpunch-5b2d8.firebasestorage.app",
-            messagingSenderId: "520710359414",
-            appId: "1:520710359414:web:24f13d22d295deb2a0d257"
+            apiKey: "AIzaSyAnpeLs7fpfkWIxdlqttvd9N_kQM1fss0E",
+            authDomain: "cartpunch-a2267.firebaseapp.com",
+            databaseURL: "https://cartpunch-a2267-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "cartpunch-a2267",
+            storageBucket: "cartpunch-a2267.firebasestorage.app",
+            messagingSenderId: "413542821283",
+            appId: "1:413542821283:web:3bb97cdb6f8b54e774fe16"
         };
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
@@ -77,6 +89,9 @@
         let requestRef = null;
         let requestData = null;
         let approvalStarted = false;
+        // Once the decision is saved, later sign-in changes (e.g. another tab signing out)
+        // must not replace the result on screen.
+        let decisionSaved = false;
         let signInNotice = null;
 
         function isMainAdminUser(user) {
@@ -98,7 +113,6 @@
         }
 
         function showLoginLink() {
-            document.getElementById('google-signin').classList.remove('hidden');
             document.getElementById('login-link').classList.remove('hidden');
         }
 
@@ -137,6 +151,26 @@
             } finally {
                 button.disabled = false;
                 button.textContent = 'Sign in with Google as Main Admin';
+            }
+        }
+
+        async function signInWithPassword(event) {
+            event.preventDefault();
+            const button = document.getElementById('password-signin');
+            button.disabled = true;
+            button.textContent = 'Signing in...';
+            try {
+                await auth.signInWithEmailAndPassword(MAIN_ADMIN_EMAIL, document.getElementById('main-admin-password').value);
+            } catch (error) {
+                console.error(error);
+                const message = ['auth/wrong-password', 'auth/invalid-credential', 'auth/invalid-login-credentials'].includes(error.code)
+                    ? 'Incorrect password for the Main Admin account.'
+                    : 'Could not sign in: ' + (error.message || 'Unknown error');
+                renderResult('error', 'Sign-In Failed', message);
+                showLoginLink();
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Sign in and Continue';
             }
         }
 
@@ -203,9 +237,10 @@
                     }
                 }
                 await db.ref().update(updates);
+                decisionSaved = true;
                 renderResult(
                     status === 'approved' ? 'success' : 'error',
-                    status === 'approved' ? 'Request Approved' : 'Request Rejected',
+                    status === 'approved' ? 'User Has Been Approved!' : 'Request Declined',
                     `${requestData.name} (${requestData.email}) was ${status} by ${MAIN_ADMIN_EMAIL}.`
                 );
             } catch (err) {
@@ -215,6 +250,7 @@
         }
 
         async function loadRequest(user) {
+            if (decisionSaved) return;
             if (!isMainAdminUser(user)) {
                 const notice = signInNotice;
                 signInNotice = null;
@@ -263,10 +299,64 @@
             }
         }
 
+        // One-click approval: the link in the Main Admin's email carries the secret approval key
+        // (written into the EmailJS template, never sent from the applicant's browser). The
+        // database rules accept the decision only when the key matches and the request is
+        // still pending and inside its 5-minute window, so no sign-in is needed.
+        async function approveWithKey(approvalKey) {
+            document.getElementById('title').textContent = action === 'approve' ? 'Approving Request...' : 'Rejecting Request...';
+            document.getElementById('message').textContent = 'Applying the Main Admin decision from the email link.';
+            try {
+                const statusSnapshot = await db.ref(`pending_admin_status/${reqId}`).once('value');
+                const current = statusSnapshot.val();
+                if (!current) {
+                    return renderResult('error', 'Request Not Found', 'This sign-up request does not exist.');
+                }
+                if (current.status !== 'pending') {
+                    return renderResult(current.status === 'approved' ? 'success' : 'error', 'Already Processed',
+                        `This request was already marked as "${current.status}".`);
+                }
+                if (!Number.isFinite(current.expiresAt) || Date.now() >= current.expiresAt) {
+                    return renderResult('error', 'Link Expired', 'This approval request expired after 5 minutes. The applicant needs to sign up again.');
+                }
+
+                const status = action === 'approve' ? 'approved' : 'rejected';
+                const now = firebase.database.ServerValue.TIMESTAMP;
+                const updates = {};
+                updates[`approval_actions/${reqId}`] = { key: approvalKey, action, at: now };
+                updates[`pending_admin_requests/${reqId}/status`] = status;
+                updates[`pending_admin_requests/${reqId}/${status === 'approved' ? 'approvedAt' : 'resolvedAt'}`] = now;
+                updates[`pending_admin_requests/${reqId}/resolvedBy`] = 'Main Admin (email link)';
+                updates[`pending_admin_status/${reqId}/status`] = status;
+                updates[`pending_admin_status/${reqId}/resolvedAt`] = now;
+                await db.ref().update(updates);
+                decisionSaved = true;
+                renderResult(
+                    status === 'approved' ? 'success' : 'error',
+                    status === 'approved' ? 'User Has Been Approved!' : 'Request Declined',
+                    status === 'approved'
+                        ? `${applicantLabel} can now sign in to the CartPunch admin dashboard.`
+                        : `${applicantLabel} was declined and cannot sign in.`
+                );
+            } catch (error) {
+                console.error(error);
+                renderResult('error', 'Approval Failed',
+                    'This link could not be applied. It may have expired, already been used, or the approval key in the email template does not match. ' +
+                    (error.message || ''));
+            }
+        }
+
+        const approvalKey = params.get('key');
+        const applicantEmailParam = params.get('email');
+        const applicantLabel = applicantEmailParam && applicantEmailParam.includes('@') ? applicantEmailParam : 'The applicant';
         if (!reqId || !/^[A-Za-z0-9_-]+$/.test(reqId) || !['approve', 'reject'].includes(action)) {
             renderResult('error', 'Invalid Approval Link', 'Missing or malformed request parameters.');
+        } else if (approvalKey) {
+            approveWithKey(approvalKey);
         } else {
             document.getElementById('google-signin').addEventListener('click', signInWithGoogle);
+            document.getElementById('main-admin-email').value = MAIN_ADMIN_EMAIL;
+            document.getElementById('login-link').addEventListener('submit', signInWithPassword);
             auth.onAuthStateChanged(loadRequest);
         }
     </script>
