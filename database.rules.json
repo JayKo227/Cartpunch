@@ -13,7 +13,7 @@
       ],
       "$eventId": {
         ".write": "auth != null && (auth.token.email === 'cartpunch.security@gmail.com' || root.child('admins').child(auth.uid).child('role').val() === 'admin') && !data.exists() && newData.exists()",
-        ".validate": "newData.hasChildren(['type', 'uid', 'email', 'displayName', 'timestamp', 'details']) && newData.child('uid').val() === auth.uid && (newData.child('type').val() === 'login' || newData.child('type').val() === 'logout' || newData.child('type').val() === 'product_created' || newData.child('type').val() === 'product_updated' || newData.child('type').val() === 'product_deleted')",
+        ".validate": "newData.hasChildren(['type', 'uid', 'email', 'displayName', 'timestamp', 'details']) && newData.child('uid').val() === auth.uid && (newData.child('type').val() === 'login' || newData.child('type').val() === 'logout' || newData.child('type').val() === 'product_created' || newData.child('type').val() === 'product_updated' || newData.child('type').val() === 'product_deleted' || newData.child('type').val() === 'product_upload' || newData.child('type').val() === 'product_upload_undone')",
         "uid": {
           ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128"
         },
@@ -42,7 +42,7 @@
           ".validate": "newData.isString() && newData.val().length <= 256"
         },
         "type": {
-          ".validate": "newData.isString() && (newData.val() === 'login' || newData.val() === 'logout' || newData.val() === 'product_created' || newData.val() === 'product_updated' || newData.val() === 'product_deleted')"
+          ".validate": "newData.isString() && (newData.val() === 'login' || newData.val() === 'logout' || newData.val() === 'product_created' || newData.val() === 'product_updated' || newData.val() === 'product_deleted' || newData.val() === 'product_upload' || newData.val() === 'product_upload_undone')"
         },
         "$other": {
           ".validate": false
@@ -174,6 +174,16 @@
         ".read": "auth != null && auth.uid === $uid",
         ".write": "auth != null && auth.uid === $uid && newData.isString() && root.child('pending_admin_requests').child(newData.val()).child('uid').val() === auth.uid",
         ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{1,64}$/)"
+      }
+    },
+    "upload_history": {
+      ".read": "auth != null && (auth.token.email === 'cartpunch.security@gmail.com' || root.child('admins').child(auth.uid).child('role').val() === 'admin')",
+      ".indexOn": [
+        "uploadedAt"
+      ],
+      "$uploadId": {
+        ".write": "auth != null && (auth.token.email === 'cartpunch.security@gmail.com' || (root.child('admins').child(auth.uid).child('role').val() === 'admin' && ((!data.exists() && newData.child('uploadedBy').val() === auth.uid && newData.child('status').val() === 'pending') || (data.child('uploadedBy').val() === auth.uid && data.child('status').val() === 'pending' && (newData.child('status').val() === 'complete' || newData.child('status').val() === 'failed') && newData.child('undone').val() !== true))))",
+        ".validate": "newData.hasChildren(['uploadedAt', 'uploadedBy', 'mode', 'status'])"
       }
     }
   }

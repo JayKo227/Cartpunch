@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Database - CartPunch Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 500: '#ef6c00', 600: '#e65100' },
+                        surface: '#f8fafc'
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <!-- SheetJS: reads .xls and .xlsx in the browser -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .mode-card:has(input:checked) { border-color: #ef6c00; box-shadow: 0 0 0 1px #ef6c00; background: #fff7ed; }
+    </style>
+</head>
+
+<body class="bg-surface min-h-screen text-slate-800">
+
+    <header class="bg-white border-b border-slate-100 sticky top-0 z-10">
+        <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <a href="Admin.html#inventory" class="flex items-center space-x-2 text-sm font-semibold text-slate-500 hover:text-brand-600">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                    <span>Product Management</span>
+                </a>
+                <span class="text-slate-300">|</span>
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center text-white">
+                        <i data-lucide="scan-line" class="w-4 h-4"></i>
+                    </div>
+                    <span class="font-extrabold tracking-tight">CartPunch Admin</span>
+                </div>
+            </div>
+            <span id="signed-in-as" class="text-sm text-slate-500"></span>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-6 py-10 space-y-8">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-800">Upload Database</h1>
+            <p class="text-sm text-slate-500 mt-2">Upload the Master Item report (.xls or .xlsx). Only <strong>Item Code (SKU)</strong>, <strong>Short Description</strong> and <strong>Unit Price</strong> are kept; supplier, department, section and division rows and the other columns are removed.</p>
+        </div>
+
+        <div id="page-message" class="hidden p-4 rounded-lg text-sm font-semibold" role="status"></div>
+
+        <!-- Step 1: mode -->
+        <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
+            <h2 class="font-bold text-slate-800">1. Choose what the upload should do</h2>
+            <div class="grid md:grid-cols-2 gap-4">
+                <label class="mode-card cursor-pointer rounded-xl border border-slate-200 p-5 flex gap-4 transition-all">
+                    <input type="radio" name="mode" value="merge" checked class="mt-1 accent-orange-600">
+                    <div>
+                        <p class="font-bold text-slate-800">Add &amp; update products</p>
+                        <p class="text-sm text-slate-500 mt-1">New SKUs are added. Existing SKUs get the new name and price. Nothing is duplicated and no product is deleted.</p>
+                    </div>
+                </label>
+                <label class="mode-card cursor-pointer rounded-xl border border-slate-200 p-5 flex gap-4 transition-all">
+                    <input type="radio" name="mode" value="price" class="mt-1 accent-orange-600">
+                    <div>
+                        <p class="font-bold text-slate-800">Update prices only</p>
+                        <p class="text-sm text-slate-500 mt-1">Only the price of existing SKUs changes; names stay the same. SKUs that are not in the database are skipped.</p>
+                    </div>
+                </label>
+            </div>
+        </section>
+
+        <!-- Step 2: file -->
+        <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
+            <h2 class="font-bold text-slate-800">2. Choose the Excel file</h2>
+            <label id="drop-zone" for="file-input"
+                class="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-300 rounded-xl py-10 cursor-pointer hover:border-brand-500 hover:bg-orange-50/40 transition-colors">
+                <i data-lucide="file-spreadsheet" class="w-10 h-10 text-slate-400"></i>
+                <p class="text-sm font-semibold text-slate-700"><span class="text-brand-600 underline">Click to choose</span> or drag the file here</p>
+                <p id="file-name" class="text-xs text-slate-400">.xls or .xlsx</p>
+            </label>
+            <input id="file-input" type="file" accept=".xls,.xlsx" class="hidden">
+        </section>
+
+        <!-- Step 3: preview -->
+        <section id="preview-section" class="hidden bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="p-6 space-y-4 border-b border-slate-100">
+                <h2 class="font-bold text-slate-800">3. Check the preview</h2>
+                <div id="summary" class="grid grid-cols-2 md:grid-cols-6 gap-3"></div>
+                <div id="problems" class="hidden text-sm bg-amber-50 border border-amber-200 text-amber-800 rounded-lg p-3"></div>
+            </div>
+            <div class="px-6 py-3 flex flex-wrap items-center justify-between gap-3 bg-slate-50 border-b border-slate-100">
+                <select id="preview-filter" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm">
+                    <option value="changes">Changes only</option>
+                    <option value="all">All rows in file</option>
+                    <option value="skip">Skipped / not found</option>
+                </select>
+                <span id="preview-count" class="text-xs text-slate-500"></span>
+            </div>
+            <div class="max-h-[420px] overflow-auto">
+                <table class="w-full text-sm">
+                    <thead class="sticky top-0 bg-white text-left text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                        <tr>
+                            <th class="px-5 py-3">Result</th>
+                            <th class="px-5 py-3">SKU / Barcode</th>
+                            <th class="px-5 py-3">Short Description</th>
+                            <th class="px-5 py-3 text-right">Old Price</th>
+                            <th class="px-5 py-3 text-right">New Price</th>
+                        </tr>
+                    </thead>
+                    <tbody id="preview-body" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+            <div class="p-6 flex flex-wrap items-center justify-between gap-4 border-t border-slate-100">
+                <div id="progress-wrap" class="hidden flex-1 min-w-[240px]">
+                    <div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div id="progress-bar" class="h-full bg-brand-500 transition-all" style="width:0%"></div></div>
+                    <p id="progress-text" class="text-xs text-slate-500 mt-1"></p>
+                </div>
+                <button id="upload-btn" type="button" disabled
+                    class="ml-auto px-8 py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-lg shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                    <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                    <span id="upload-btn-text">Upload</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- History -->
+        <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="p-6 border-b border-slate-100">
+                <h2 class="font-bold text-slate-800">Upload History</h2>
+                <p class="text-xs text-slate-500 mt-1">The last 10 uploads. Only the Main Admin can undo, newest upload first. Undo skips products that were edited after the upload.</p>
+            </div>
+            <div class="overflow-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 text-left text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                        <tr>
+                            <th class="px-5 py-3 whitespace-nowrap">Date &amp; Time</th>
+                            <th class="px-5 py-3">Uploaded By</th>
+                            <th class="px-5 py-3">File</th>
+                            <th class="px-5 py-3">Mode</th>
+                            <th class="px-5 py-3">Result</th>
+                            <th class="px-5 py-3">Status</th>
+                            <th class="px-5 py-3 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body" class="divide-y divide-slate-100">
+                        <tr><td colspan="7" class="text-center text-slate-400 py-8">Loading upload history...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAnpeLs7fpfkWIxdlqttvd9N_kQM1fss0E",
+            authDomain: "cartpunch-a2267.firebaseapp.com",
+            databaseURL: "https://cartpunch-a2267-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "cartpunch-a2267",
+            storageBucket: "cartpunch-a2267.firebasestorage.app",
+            messagingSenderId: "413542821283",
+            appId: "1:413542821283:web:3bb97cdb6f8b54e774fe16"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+        const MAIN_ADMIN_EMAIL = 'cartpunch.security@gmail.com';
+        const HISTORY_LIMIT = 10;
+        const BATCH_SIZE = 400;
+
+        let currentUser = null;
+        let adminProfile = {};
+        let isMainAdmin = false;
+        let parsed = null;   // { fileName, rows, removedRows, problems, duplicates }
+        let plan = null;     // computed changes against the current database
+        let busy = false;
+        let historyEntries = [];
+
+        // ---------- helpers ----------
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+        function peso(value) {
+            return Number.isFinite(value) ? `₱${value.toFixed(2)}` : '—';
+        }
+        function showPageMessage(text, isError) {
+            const el = document.getElementById('page-message');
+            el.textContent = text;
+            el.className = `p-4 rounded-lg text-sm font-semibold ${isError ? 'bg-rose-50 text-rose-700 border border-rose-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`;
+            el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        function currentMode() {
+            return document.querySelector('input[name="mode"]:checked').value;
+        }
+        function productName(record) {
+            return record ? (record.name || record.item_name || record.item_description || record.description || '') : '';
+        }
+        function productPrice(record) {
+            if (!record) return NaN;
+            const value = record.price !== undefined ? record.price : record.unit_price;
+            return typeof value === 'number' ? value : parseFloat(value);
+        }
+        function samePrice(a, b) {
+            return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) < 0.005;
+        }
+        function setProgress(done, total, label) {
+            document.getElementById('progress-wrap').classList.remove('hidden');
+            document.getElementById('progress-bar').style.width = `${total ? Math.round(done / total * 100) : 0}%`;
+            document.getElementById('progress-text').textContent = label;
+        }
+
+        // ---------- access ----------
+        auth.onAuthStateChanged(async (user) => {
+            if (!user) {
+                window.location.replace('Login.html');
+                return;
+            }
+            try {
+                isMainAdmin = user.email === MAIN_ADMIN_EMAIL;
+                const profile = (await db.ref(`admins/${user.uid}`).once('value')).val() || {};
+                if (!isMainAdmin) {
+                    const verified = user.emailVerified ||
+                        Number.isFinite((await db.ref(`admin_otp/${user.uid}/verifiedAt`).once('value')).val());
+                    if (profile.role !== 'admin' || !verified) {
+                        window.location.replace('Admin.html');
+                        return;
+                    }
+                }
+                currentUser = user;
+                adminProfile = profile;
+                document.getElementById('signed-in-as').textContent =
+                    `Signed in as ${profile.name || user.email}${isMainAdmin ? ' (Main Admin)' : ''}`;
+                listenToHistory();
+            } catch (error) {
+                console.error(error);
+                showPageMessage('Could not verify admin access: ' + error.message, true);
+            }
+        });
+
+        // ---------- reading the Excel report ----------
+        const GROUP_ROW = /^(supplier|department|section|division)\s*:/i;
+        const INVALID_KEY = /[.#$\[\]\/]/;
+
+        function cellText(value) {
+            if (typeof value === 'number') return String(Math.round(value));
+            return String(value ?? '').trim();
+        }
+        function cellPrice(value) {
+            if (typeof value === 'number') return value;
+            const n = parseFloat(String(value ?? '').replace(/[₱,\s]/g, ''));
+            return Number.isFinite(n) ? n : NaN;
+        }
+
+        function parseWorkbook(workbook, fileName) {
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: true });
+            const norm = (v) => String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+            // Find the header row (the report has title lines above it).
+            let headerIndex = -1;
+            let col = {};
+            for (let i = 0; i < Math.min(rows.length, 60); i++) {
+                const cells = rows[i].map(norm);
+                const code = cells.findIndex(c => c === 'item code' || c === 'sku' || c === 'barcode');
+                const price = cells.findIndex(c => c === 'unit price');
+                if (code >= 0 && price >= 0) {
+                    const shortDesc = cells.indexOf('short description');
+                    const longDesc = cells.indexOf('item description');
+                    col = { code, price, name: shortDesc >= 0 ? shortDesc : longDesc };
+                    headerIndex = i;
+                    break;
+                }
+            }
+            if (headerIndex < 0) {
+                throw new Error('Could not find the column headers. The file needs "Item Code" (or "SKU") and "Unit Price" columns.');
+            }
+            if (col.name < 0) {
+                throw new Error('Could not find a "Short Description" column.');
+            }
+
+            // The report wraps long barcodes and names onto the next line: a row with a short
+            // number in the code column and no price continues the product above it
+            // (e.g. "48000160122" + "80" = "4800016012280"). Join those back together.
+            const entries = [];
+            let removedRows = 0;
+            let joinedRows = 0;
+            for (let i = headerIndex + 1; i < rows.length; i++) {
+                const row = rows[i];
+                const code = cellText(row[col.code]);
+                const rawName = String(row[col.name] ?? '');
+                const rawPrice = row[col.price];
+                const priceMissing = String(rawPrice ?? '').trim() === '';
+                const blank = row.every(c => String(c ?? '').trim() === '');
+                if (blank || !code || GROUP_ROW.test(code) || code.includes(' : ')) {
+                    removedRows++;
+                    continue;
+                }
+                const last = entries[entries.length - 1];
+                if (priceMissing && /^\d+$/.test(code) && last && last.row === i) {
+                    last.sku += code;
+                    last.rawName += rawName;
+                    last.row = i + 1;
+                    joinedRows++;
+                    continue;
+                }
+                entries.push({ sku: code, rawName, rawPrice, excelRow: i + 1, row: i + 1 });
+            }
+
+            const bySku = new Map();
+            const problems = [];
+            let duplicates = 0;
+            entries.forEach(entry => {
+                const sku = entry.sku;
+                const name = entry.rawName.replace(/\s+/g, ' ').trim();
+                const price = cellPrice(entry.rawPrice);
+                if (INVALID_KEY.test(sku) || sku.length > 128) {
+                    problems.push(`Row ${entry.excelRow}: SKU "${sku}" has characters that are not allowed (. # $ [ ] /).`);
+                    return;
+                }
+                if (!name) {
+                    problems.push(`Row ${entry.excelRow}: SKU ${sku} has no Short Description.`);
+                    return;
+                }
+                if (!Number.isFinite(price) || price < 0) {
+                    problems.push(`Row ${entry.excelRow}: SKU ${sku} has no valid Unit Price.`);
+                    return;
+                }
+                if (bySku.has(sku)) duplicates++;
+                bySku.set(sku, { sku, name, price: Math.round(price * 100) / 100 });
+            });
+            return { fileName, rows: Array.from(bySku.values()), removedRows, joinedRows, problems, duplicates };
+        }
+
+        async function handleFile(file) {
+            if (!file) return;
+            if (!/\.(xls|xlsx)$/i.test(file.name)) {
+                showPageMessage('Please choose an Excel file (.xls or .xlsx).', true);
+                return;
+            }
+            document.getElementById('file-name').textContent = `${file.name} — reading...`;
+            try {
+                const buffer = await file.arrayBuffer();
+                const workbook = XLSX.read(buffer, { type: 'array' });
+                parsed = parseWorkbook(workbook, file.name);
+                document.getElementById('file-name').textContent = file.name;
+                document.getElementById('page-message').className = 'hidden';
+                await buildPlan();
+            } catch (error) {
+                console.error(error);
+                parsed = null;
+                plan = null;
+                document.getElementById('file-name').textContent = file.name;
+                document.getElementById('preview-section').classList.add('hidden');
+                showPageMessage('Could not read this file: ' + error.message, true);
+            }
+        }
+
+        // ---------- comparing against the database ----------
+        async function buildPlan() {
+            if (!parsed) return;
+            const mode = currentMode();
+            const existing = (await db.ref('products').once('value')).val() || {};
+            const items = parsed.rows.map(row => {
+                const before = existing[row.sku] || null;
+                const oldName = productName(before);
+                const oldPrice = productPrice(before);
+                let action;
+                if (!before) {
+                    action = mode === 'merge' ? 'add' : 'notfound';
+                } else if (mode === 'price') {
+                    action = samePrice(oldPrice, row.price) ? 'same' : 'price';
+                } else {
+                    action = (oldName === row.name && samePrice(oldPrice, row.price)) ? 'same' : 'update';
+                }
+                return { ...row, before, oldName, oldPrice, action };
+            });
+            const count = (a) => items.filter(i => i.action === a).length;
+            plan = { mode, items, existing, counts: { add: count('add'), update: count('update'), price: count('price'), same: count('same'), notfound: count('notfound') } };
+            renderPreview();
+        }
+
+        function renderPreview() {
+            const section = document.getElementById('preview-section');
+            section.classList.remove('hidden');
+            const c = plan.counts;
+            const tiles = [
+                ['Products in file', parsed.rows.length, 'text-slate-800'],
+                ['Rows removed', parsed.removedRows, 'text-slate-500'],
+                plan.mode === 'merge' ? ['Will be added', c.add, 'text-emerald-600'] : ['Not in database (skipped)', c.notfound, 'text-slate-500'],
+                plan.mode === 'merge' ? ['Will be updated', c.update, 'text-amber-600'] : ['Prices will change', c.price, 'text-amber-600'],
+                ['Already up to date', c.same, 'text-slate-500'],
+                ['Problem rows', parsed.problems.length, parsed.problems.length ? 'text-rose-600' : 'text-slate-500']
+            ];
+            document.getElementById('summary').innerHTML = tiles.map(([label, value, color]) => `
+                <div class="rounded-lg border border-slate-200 p-3">
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">${escapeHtml(label)}</p>
+                    <p class="text-xl font-extrabold mt-1 ${color}">${Number(value).toLocaleString()}</p>
+                </div>`).join('');
+
+            const problemsEl = document.getElementById('problems');
+            const notes = [];
+            if (parsed.joinedRows) notes.push(`${parsed.joinedRows} barcode(s) or name(s) were split across two lines in the report and were joined back together.`);
+            if (parsed.duplicates) notes.push(`${parsed.duplicates} SKU(s) appear more than once in the file; the last row is used.`);
+            notes.push(...parsed.problems.slice(0, 20));
+            if (parsed.problems.length > 20) notes.push(`...and ${parsed.problems.length - 20} more problem rows. They will not be uploaded.`);
+            problemsEl.classList.toggle('hidden', notes.length === 0);
+            problemsEl.innerHTML = notes.map(n => `<p>${escapeHtml(n)}</p>`).join('');
+
+            renderPreviewRows();
+            const changes = plan.mode === 'merge' ? c.add + c.update : c.price;
+            const btn = document.getElementById('upload-btn');
+            btn.disabled = busy || changes === 0;
+            document.getElementById('upload-btn-text').textContent =
+                changes === 0 ? 'Nothing to upload' : `Upload ${changes.toLocaleString()} change${changes === 1 ? '' : 's'}`;
+        }
+
+        function renderPreviewRows() {
+            const filter = document.getElementById('preview-filter').value;
+            const badges = {
+                add: ['New', 'bg-emerald-50 text-emerald-700 border-emerald-100'],
+                update: ['Update', 'bg-amber-50 text-amber-700 border-amber-100'],
+                price: ['Price change', 'bg-amber-50 text-amber-700 border-amber-100'],
+                same: ['No change', 'bg-slate-50 text-slate-500 border-slate-200'],
+                notfound: ['Not found — skipped', 'bg-slate-100 text-slate-600 border-slate-200']
+            };
+            let rows = plan.items;
+            if (filter === 'changes') rows = rows.filter(i => ['add', 'update', 'price'].includes(i.action));
+            if (filter === 'skip') rows = rows.filter(i => i.action === 'notfound');
+            const shown = rows.slice(0, 500);
+            document.getElementById('preview-count').textContent =
+                `Showing ${shown.length.toLocaleString()} of ${rows.length.toLocaleString()} rows`;
+            document.getElementById('preview-body').innerHTML = shown.length ? shown.map(item => {
+                const [label, cls] = badges[item.action];
+                const nameChanged = plan.mode === 'merge' && item.before && item.oldName !== item.name;
+                const displayName = plan.mode === 'price' && item.before ? item.oldName : item.name;
+                const priceChanged = item.before && !samePrice(item.oldPrice, item.price);
+                return `<tr>
+                    <td class="px-5 py-2.5 whitespace-nowrap"><span class="px-2.5 py-0.5 rounded-full border text-xs font-bold ${cls}">${label}</span></td>
+                    <td class="px-5 py-2.5 font-mono text-xs text-slate-600">${escapeHtml(item.sku)}</td>
+                    <td class="px-5 py-2.5 text-slate-800">${escapeHtml(displayName)}${nameChanged ? `<span class="block text-xs text-slate-400 line-through">${escapeHtml(item.oldName)}</span>` : ''}</td>
+                    <td class="px-5 py-2.5 text-right text-slate-500 tabular-nums">${item.before ? peso(item.oldPrice) : '—'}</td>
+                    <td class="px-5 py-2.5 text-right tabular-nums ${priceChanged ? 'font-bold text-amber-700' : 'text-slate-700'}">${peso(item.price)}</td>
+                </tr>`;
+            }).join('') : '<tr><td colspan="5" class="text-center text-slate-400 py-8">No rows to show.</td></tr>';
+        }
+
+        // ---------- uploading ----------
+        async function writeMonitoring(type, details) {
+            const event = {
+                type,
+                uid: currentUser.uid,
+                email: currentUser.email || '',
+                displayName: adminProfile.name || currentUser.email || 'Unknown admin',
+                timestamp: Date.now(),
+                details
+            };
+            const position = adminProfile.position || (isMainAdmin ? 'Main Admin' : '');
+            if (position) event.position = position;
+            if (adminProfile.department) event.department = adminProfile.department;
+            try {
+                await db.ref('monitoring').push().set(event);
+            } catch (error) {
+                console.error('Could not record monitoring event:', error);
+            }
+        }
+
+        async function runUpload() {
+            if (!plan || busy) return;
+            const mode = plan.mode;
+            const changes = plan.items.filter(i => mode === 'merge' ? (i.action === 'add' || i.action === 'update') : i.action === 'price');
+            if (!changes.length) return;
+            const counts = plan.counts;
+            const summary = mode === 'merge'
+                ? `${counts.add} added, ${counts.update} updated`
+                : `${counts.price} prices changed, ${counts.notfound} not found`;
+            if (!confirm(`Upload ${parsed.fileName}?\n\n${summary}.\n\nThe Main Admin can undo this upload later.`)) return;
+
+            busy = true;
+            document.getElementById('upload-btn').disabled = true;
+            document.getElementById('upload-btn-text').textContent = 'Uploading...';
+
+            // Save what each product looked like before, so the upload can be undone.
+            const before = {};
+            const after = {};
+            changes.forEach(item => {
+                before[item.sku] = item.before ? item.before : { __missing: true };
+                after[item.sku] = mode === 'price' ? { price: item.price } : { name: item.name, price: item.price };
+            });
+            const historyRef = db.ref('upload_history').push();
+            const now = Date.now();
+            try {
+                await historyRef.set({
+                    uploadedAt: now,
+                    uploadedBy: currentUser.uid,
+                    uploadedByName: adminProfile.name || currentUser.email,
+                    uploadedByEmail: currentUser.email,
+                    fileName: parsed.fileName,
+                    mode,
+                    status: 'pending',
+                    counts: { added: counts.add, updated: mode === 'merge' ? counts.update : counts.price, unchanged: counts.same, skipped: counts.notfound, problems: parsed.problems.length },
+                    before,
+                    after
+                });
+
+                for (let i = 0; i < changes.length; i += BATCH_SIZE) {
+                    const updates = {};
+                    changes.slice(i, i + BATCH_SIZE).forEach(item => {
+                        if (item.action === 'add') {
+                            updates[item.sku] = { sku: item.sku, item_name: item.name, name: item.name, unit_price: item.price, price: item.price, updatedAt: now };
+                        } else {
+                            updates[`${item.sku}/unit_price`] = item.price;
+                            updates[`${item.sku}/price`] = item.price;
+                            updates[`${item.sku}/updatedAt`] = now;
+                            if (mode === 'merge') {
+                                updates[`${item.sku}/item_name`] = item.name;
+                                updates[`${item.sku}/name`] = item.name;
+                            }
+                        }
+                    });
+                    await db.ref('products').update(updates);
+                    const done = Math.min(i + BATCH_SIZE, changes.length);
+                    setProgress(done, changes.length, `Uploaded ${done.toLocaleString()} of ${changes.length.toLocaleString()}`);
+                }
+
+                await historyRef.update({ status: 'complete', completedAt: Date.now() });
+                await writeMonitoring('product_upload', `Uploaded "${parsed.fileName}" (${mode === 'merge' ? 'add & update' : 'prices only'}): ${summary}.`);
+                showPageMessage(`Upload complete: ${summary}.`, false);
+                await buildPlan();
+            } catch (error) {
+                console.error(error);
+                try { await historyRef.update({ status: 'failed', completedAt: Date.now() }); } catch (e) { console.error(e); }
+                showPageMessage('The upload stopped before finishing: ' + error.message + ' The Main Admin can undo the part that was saved.', true);
+            } finally {
+                busy = false;
+                if (plan) renderPreview();
+            }
+        }
+
+        // ---------- history & undo ----------
+        function listenToHistory() {
+            db.ref('upload_history').orderByChild('uploadedAt').limitToLast(HISTORY_LIMIT + 5).on('value', (snapshot) => {
+                const data = snapshot.val() || {};
+                historyEntries = Object.entries(data)
+                    .map(([id, entry]) => ({ id, ...entry }))
+                    .sort((a, b) => (b.uploadedAt || 0) - (a.uploadedAt || 0));
+                renderHistory();
+                if (isMainAdmin) pruneHistory();
+            }, (error) => {
+                console.error(error);
+                document.getElementById('history-body').innerHTML =
+                    `<tr><td colspan="7" class="text-center text-rose-600 py-8">Could not load upload history: ${escapeHtml(error.message)}</td></tr>`;
+            });
+        }
+
+        function undoableId() {
+            const candidate = historyEntries.find(e => !e.undone && (e.status === 'complete' || e.status === 'failed'));
+            return candidate ? candidate.id : null;
+        }
+
+        function renderHistory() {
+            const body = document.getElementById('history-body');
+            const entries = historyEntries.slice(0, HISTORY_LIMIT);
+            if (!entries.length) {
+                body.innerHTML = '<tr><td colspan="7" class="text-center text-slate-400 py-8">No uploads yet.</td></tr>';
+                return;
+            }
+            const canUndo = undoableId();
+            body.innerHTML = entries.map(entry => {
+                const c = entry.counts || {};
+                const result = entry.mode === 'price'
+                    ? `${(c.updated || 0).toLocaleString()} prices changed`
+                    : `${(c.added || 0).toLocaleString()} added, ${(c.updated || 0).toLocaleString()} updated`;
+                let status;
+                if (entry.undone) {
+                    status = `<span class="text-slate-500">Undone ${entry.undoneAt ? new Date(entry.undoneAt).toLocaleString() : ''}</span>${entry.undoSkipped ? `<span class="block text-xs text-amber-700">${entry.undoSkipped} edited later, kept</span>` : ''}`;
+                } else if (entry.status === 'complete') {
+                    status = '<span class="text-emerald-700 font-semibold">Complete</span>';
+                } else if (entry.status === 'failed') {
+                    status = '<span class="text-rose-600 font-semibold">Stopped part-way</span>';
+                } else {
+                    status = '<span class="text-amber-600 font-semibold">In progress</span>';
+                }
+                let action = '';
+                if (entry.id === canUndo) {
+                    action = isMainAdmin
+                        ? `<button data-undo="${escapeHtml(entry.id)}" class="px-3 py-1.5 text-xs font-bold rounded-lg border border-rose-200 text-rose-700 hover:bg-rose-50">Undo upload</button>`
+                        : '<span class="text-xs text-slate-400">Main Admin can undo</span>';
+                }
+                return `<tr>
+                    <td class="px-5 py-3 whitespace-nowrap tabular-nums text-slate-600">${escapeHtml(new Date(entry.uploadedAt).toLocaleString())}</td>
+                    <td class="px-5 py-3 font-semibold text-slate-800">${escapeHtml(entry.uploadedByName || entry.uploadedByEmail || '')}</td>
+                    <td class="px-5 py-3 text-slate-600">${escapeHtml(entry.fileName || '')}</td>
+                    <td class="px-5 py-3 text-slate-600 whitespace-nowrap">${entry.mode === 'price' ? 'Prices only' : 'Add &amp; update'}</td>
+                    <td class="px-5 py-3 text-slate-600 whitespace-nowrap">${escapeHtml(result)}</td>
+                    <td class="px-5 py-3 whitespace-nowrap">${status}</td>
+                    <td class="px-5 py-3 text-right">${action}</td>
+                </tr>`;
+            }).join('');
+            body.querySelectorAll('[data-undo]').forEach(btn => btn.addEventListener('click', () => undoUpload(btn.dataset.undo)));
+        }
+
+        async function pruneHistory() {
+            const old = historyEntries.slice(HISTORY_LIMIT).filter(e => e.status !== 'pending');
+            if (!old.length) return;
+            const updates = {};
+            old.forEach(e => { updates[e.id] = null; });
+            try { await db.ref('upload_history').update(updates); } catch (error) { console.error('Could not prune history:', error); }
+        }
+
+        async function undoUpload(id) {
+            if (!isMainAdmin || busy) return;
+            if (id !== undoableId()) {
+                showPageMessage('Only the newest upload can be undone.', true);
+                return;
+            }
+            const entry = (await db.ref(`upload_history/${id}`).once('value')).val();
+            if (!entry || entry.undone) return;
+            const before = entry.before || {};
+            const after = entry.after || {};
+            const skus = Object.keys(before);
+            const removeCount = skus.filter(s => before[s] && before[s].__missing).length;
+            const restoreCount = skus.length - removeCount;
+            if (!confirm(`Undo the upload of "${entry.fileName}"?\n\nRemove ${removeCount} added product(s) and restore ${restoreCount} product(s) to how they were before.\nProducts edited after the upload are kept.`)) return;
+
+            busy = true;
+            const current = (await db.ref('products').once('value')).val() || {};
+            const restore = {};
+            let skipped = 0;
+            let restored = 0;
+            skus.forEach(sku => {
+                const prev = before[sku];
+                const wasMissing = prev && prev.__missing;
+                const now = current[sku];
+                const target = after[sku] || {};
+                // Already back to the "before" state (e.g. an upload that stopped part-way).
+                if (wasMissing ? !now : (now && samePrice(productPrice(now), productPrice(prev)) && productName(now) === productName(prev))) {
+                    return;
+                }
+                // Changed again after the upload: keep the newer edit.
+                const matchesUpload = now && samePrice(productPrice(now), target.price) &&
+                    (target.name === undefined || productName(now) === target.name);
+                if (!matchesUpload) {
+                    skipped++;
+                    return;
+                }
+                restore[sku] = wasMissing ? null : prev;
+                restored++;
+            });
+
+            try {
+                const keys = Object.keys(restore);
+                for (let i = 0; i < keys.length; i += BATCH_SIZE) {
+                    const updates = {};
+                    keys.slice(i, i + BATCH_SIZE).forEach(k => { updates[k] = restore[k]; });
+                    await db.ref('products').update(updates);
+                    const done = Math.min(i + BATCH_SIZE, keys.length);
+                    setProgress(done, keys.length, `Restored ${done.toLocaleString()} of ${keys.length.toLocaleString()}`);
+                }
+                await db.ref(`upload_history/${id}`).update({ undone: true, undoneAt: Date.now(), undoRestored: restored, undoSkipped: skipped });
+                await writeMonitoring('product_upload_undone', `Undid upload of "${entry.fileName}": ${restored} product(s) restored or removed${skipped ? `, ${skipped} edited later and kept` : ''}.`);
+                showPageMessage(`Undo complete: ${restored} product(s) restored or removed${skipped ? `. ${skipped} product(s) were edited after the upload and were kept.` : '.'}`, false);
+                if (parsed) await buildPlan();
+            } catch (error) {
+                console.error(error);
+                showPageMessage('Undo stopped before finishing: ' + error.message + ' You can run Undo again.', true);
+            } finally {
+                busy = false;
+                if (plan) renderPreview();
+            }
+        }
+
+        // ---------- events ----------
+        const fileInput = document.getElementById('file-input');
+        const dropZone = document.getElementById('drop-zone');
+        fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
+        ['dragenter', 'dragover'].forEach(evt => dropZone.addEventListener(evt, (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-brand-500', 'bg-orange-50/40');
+        }));
+        ['dragleave', 'drop'].forEach(evt => dropZone.addEventListener(evt, (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-brand-500', 'bg-orange-50/40');
+        }));
+        dropZone.addEventListener('drop', (e) => handleFile(e.dataTransfer.files[0]));
+        document.querySelectorAll('input[name="mode"]').forEach(r => r.addEventListener('change', () => { if (parsed) buildPlan(); }));
+        document.getElementById('preview-filter').addEventListener('change', () => { if (plan) renderPreviewRows(); });
+        document.getElementById('upload-btn').addEventListener('click', runUpload);
+    </script>
+</body>
+
+</html>

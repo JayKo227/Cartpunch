@@ -272,10 +272,16 @@
             <div id="view-inventory" class="hidden space-y-6 animate-fade-in">
                 <div class="flex justify-between items-center mb-2">
                     <h2 class="text-3xl font-bold text-slate-800">Product Management</h2>
+                    <div class="flex items-center gap-3">
+                    <a href="UploadDatabase.html" class="flex items-center space-x-2 bg-white hover:bg-slate-50 text-slate-700 font-bold px-5 py-2.5 rounded-lg border border-slate-200 shadow-sm transition-all text-sm">
+                        <i data-lucide="upload" class="w-4 h-4"></i>
+                        <span>Upload Database</span>
+                    </a>
                     <button onclick="openAddModal()" class="flex items-center space-x-2 bg-brand-500 hover:bg-brand-600 text-white font-bold px-5 py-2.5 rounded-lg shadow-md shadow-brand-500/20 transition-all text-sm">
                         <i data-lucide="plus" class="w-4 h-4"></i>
                         <span>Add New Item</span>
                     </button>
+                    </div>
                 </div>
 
                 <!-- Search & Filters -->
@@ -544,6 +550,8 @@
                                 <option value="product_created">Added</option>
                                 <option value="product_updated">Edited</option>
                                 <option value="product_deleted">Removed</option>
+                                <option value="product_upload">Uploads</option>
+                                <option value="product_upload_undone">Undone uploads</option>
                             </select>
                             <input id="monitoring-search" type="search" oninput="renderMonitoringList()" placeholder="Search admin or product..."
                                 class="w-56 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500">
@@ -911,14 +919,18 @@
                 logout: 'Logout',
                 product_created: 'Added',
                 product_updated: 'Edited',
-                product_deleted: 'Removed'
+                product_deleted: 'Removed',
+                product_upload: 'Uploaded',
+                product_upload_undone: 'Undo upload'
             };
             const colors = {
                 login: 'bg-emerald-50 text-emerald-700 border-emerald-100',
                 logout: 'bg-slate-100 text-slate-600 border-slate-200',
                 product_created: 'bg-blue-50 text-blue-700 border-blue-100',
                 product_updated: 'bg-amber-50 text-amber-700 border-amber-100',
-                product_deleted: 'bg-rose-50 text-rose-700 border-rose-100'
+                product_deleted: 'bg-rose-50 text-rose-700 border-rose-100',
+                product_upload: 'bg-violet-50 text-violet-700 border-violet-100',
+                product_upload_undone: 'bg-slate-100 text-slate-700 border-slate-200'
             };
 
             list.innerHTML = events.map(event => {
