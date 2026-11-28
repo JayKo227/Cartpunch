@@ -108,9 +108,14 @@ void lookupAndProcessItem(String barcode) {
   // Search Firebase for Product
   if (Firebase.ready()) {
     String path = "/products/" + barcode;
+    // Catalog items use item_name/unit_price; items added from the dashboard also have name/price.
     if (Firebase.RTDB.getString(&fbdo, path + "/name"))
       itemName = fbdo.stringData();
+    else if (Firebase.RTDB.getString(&fbdo, path + "/item_name"))
+      itemName = fbdo.stringData();
     if (Firebase.RTDB.getFloat(&fbdo, path + "/price"))
+      itemPrice = fbdo.floatData();
+    else if (Firebase.RTDB.getFloat(&fbdo, path + "/unit_price"))
       itemPrice = fbdo.floatData();
   }
 

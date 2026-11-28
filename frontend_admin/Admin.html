@@ -787,7 +787,7 @@
                 Object.keys(data).forEach(key => {
                     const raw = data[key];
                     if (!raw || typeof raw !== 'object') return;
-                    const itemName = raw.name || raw.item_description || raw.description || 'Unknown Item';
+                    const itemName = raw.name || raw.item_name || raw.item_description || raw.description || 'Unknown Item';
                     const itemPrice = parseFloat(raw.price !== undefined ? raw.price : raw.unit_price) || 0;
                     const barcode = String(raw.sku || key);
                     allProducts.push({
@@ -1192,6 +1192,7 @@
             const productData = {
                 sku: newBarcode,
                 name: name,
+                item_name: name,
                 item_description: name,
                 price: roundedPrice,
                 unit_price: roundedPrice,
